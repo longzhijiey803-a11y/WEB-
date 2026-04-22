@@ -36,10 +36,22 @@ app.use(express.json({ limit: "1mb" }));
 const MAX_LOG = 1000;
 const auditLog = [];
 
+// APIキーが万一メッセージやログに混入しても削除するサニタイザ
+function sanitize(s) {
+  if (typeof s !== "string") return s;
+  let out = s;
+  if (API_KEY) out = out.split(API_KEY).join("[REDACTED]");
+  // key=XXX... パターン一般もマスク
+  out = out.replace(/key=[A-Za-z0-9_-]{10,}/g, "key=[REDACTED]");
+  return out;
+}
+
 function logAudit(entry) {
-  const enriched = { t: new Date().toISOString(), ...entry };
+  const safe = {};
+  for (const [k, v] of Object.entries(entry)) safe[k] = typeof v === "string" ? sanitize(v) : v;
+  const enriched = { t: new Date().toISOString(), ...safe };
   console.log(JSON.stringify(enriched));
-  auditLog.unshift({ ts: Date.now(), ...entry });
+  auditLog.unshift({ ts: Date.now(), ...safe });
   if (auditLog.length > MAX_LOG) auditLog.length = MAX_LOG;
 }
 
@@ -110,7 +122,7 @@ app.post("/api/generate", requireAccess, async (req, res) => {
     });
 
     if (!upstream.ok) {
-      const txt = await upstream.text();
+      const txt = sanitize(await upstream.text());
       logAudit({ event: "upstream_error", ip, status: upstream.status, bodySize });
       return res.status(upstream.status).type("application/json").send(txt);
     }
@@ -156,8 +168,9 @@ app.post("/api/generate", requireAccess, async (req, res) => {
       totalTokens: usage?.totalTokenCount ?? null
     });
   } catch (e) {
-    logAudit({ event: "proxy_error", ip, msg: e.message });
-    try { res.status(500).json({ error: { message: e.message } }); } catch {}
+    const safeMsg = sanitize(e.message || "unknown");
+    logAudit({ event: "proxy_error", ip, msg: safeMsg });
+    try { res.status(500).json({ error: { message: safeMsg } }); } catch {}
   }
 });
 
