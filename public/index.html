@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Webテスト（論理的読解・英語・計数）</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --panel: #ffffff;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --border: #d2d2d7;
+    --accent: #0071e3;
+    --accent-hover: #0077ed;
+    --correct: #34c759;
+    --wrong: #ff3b30;
+    --warning: #ff9500;
+    --shadow: 0 2px 8px rgba(0,0,0,0.06);
+    --mono: "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Sans", "ヒラギノ角ゴ Pro", "Yu Gothic", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+  }
+  #app { max-width: 880px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  h2 { font-size: 18px; margin: 0 0 12px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .panel { background: var(--panel); border-radius: 12px; padding: 24px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--muted); }
+  input[type="password"], input[type="text"], textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 14px; background: #fff; font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 80px; font-family: var(--mono); font-size: 12px; }
+  button {
+    background: var(--accent); color: white; border: none;
+    padding: 10px 20px; border-radius: 8px; font-size: 14px;
+    cursor: pointer; font-family: inherit; transition: background 0.15s;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+  button.secondary:hover:not(:disabled) { background: #f0f0f5; }
+  button.ghost { background: transparent; color: var(--muted); border: none; padding: 6px 12px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .field { margin-bottom: 16px; }
+  .error { background: #fff2f2; color: var(--wrong); padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+  .notice { background: #e8f2ff; color: var(--accent); padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+  .progress-bar { height: 6px; background: #e5e5ea; border-radius: 3px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--accent); transition: width 0.3s; }
+  @keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+
+  /* Language toggle */
+  .lang-toggle { display: flex; gap: 12px; }
+  .lang-btn {
+    flex: 1;
+    background: transparent;
+    color: var(--text);
+    border: 2px solid var(--border);
+    padding: 18px 8px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 12px;
+    white-space: nowrap;
+  }
+  @media (min-width: 600px) {
+    .lang-btn { padding: 22px 12px; font-size: 17px; }
+  }
+  .lang-btn:hover { background: #f0f0f5; }
+  .lang-btn.active {
+    background: var(--accent); color: white; border-color: var(--accent);
+    box-shadow: 0 4px 12px rgba(0,113,227,0.25);
+  }
+
+  .faq-link {
+    color: var(--accent);
+    font-size: 13px;
+    text-decoration: underline;
+    margin-bottom: 14px;
+    cursor: default;
+    user-select: none;
+  }
+
+  /* Test screen */
+  .q-num { font-size: 20px; font-weight: 700; margin-right: 12px; }
+  .q-lead { font-size: 14px; color: var(--text); }
+  .passage-block {
+    margin: 16px 0 0;
+    padding: 16px 20px;
+    border-left: 4px solid var(--accent);
+    background: #f5f8fc;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    font-size: 15px;
+    line-height: 1.9;
+  }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .q-statement { font-size: 16px; font-weight: 600; padding: 12px 0; }
+
+  /* 計数モード */
+  .num-meta { margin: 16px 0 8px; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .table-theme { margin: 0; font-size: 15px; font-weight: 700; }
+  .table-note { margin: 0; color: var(--muted); font-size: 12px; }
+  .data-table-wrap { overflow-x: auto; margin: 8px 0 16px; }
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: #fff;
+  }
+  .data-table th, .data-table td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .data-table th {
+    background: #f5f5f7;
+    font-weight: 600;
+  }
+  .data-table td:first-child, .data-table th:first-child {
+    text-align: left;
+  }
+  .raw-table {
+    background: #f5f5f7;
+    padding: 12px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 13px;
+    overflow-x: auto;
+  }
+  .chart-wrap { margin: 12px 0 16px; overflow-x: auto; }
+  .blank-cell { background: #fff4e6; color: #ff9500; font-weight: 700; }
+
+  .choices-radio { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 20px; }
+  .choice-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 14px; border-radius: 8px; cursor: pointer;
+    border: 2px solid transparent; font-size: 14px; line-height: 1.6;
+    user-select: none; transition: background 0.12s, border-color 0.12s;
+  }
+  .choice-row:hover:not(.locked) { background: #f5f5f7; }
+  .choice-row.selected { background: #e8f2ff; border-color: var(--accent); }
+  .choice-row.locked { cursor: default; }
+  .choice-row.reveal-correct { border-color: var(--correct); background: #e8f9ee; }
+  .choice-row.reveal-wrong { border-color: var(--wrong); background: #ffeeee; }
+  .radio-icon { flex-shrink: 0; font-size: 18px; line-height: 1.4; color: var(--muted); }
+  .choice-row.selected .radio-icon { color: var(--accent); }
+
+  .feedback-banner {
+    margin: 12px 0 8px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 16px;
+    animation: fbIn 0.25s ease-out;
+  }
+  .feedback-banner.ok { background: #e8f9ee; color: var(--correct); }
+  .feedback-banner.ng { background: #ffeeee; color: var(--wrong); }
+  @keyframes fbIn { from {opacity:0; transform: scale(0.95)} to {opacity:1; transform: none} }
+
+  .status-row {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; font-family: var(--mono); font-size: 13px; padding: 4px 0;
+  }
+  .status-row .label { font-family: inherit; font-weight: 600; color: var(--text); }
+  .status-row .bar { letter-spacing: -1px; }
+  .status-row.warn .bar { color: var(--warning); }
+  .status-row.danger .bar { color: var(--wrong); }
+
+  .next-btn {
+    font-family: var(--mono);
+    background: var(--text); color: #fff;
+    padding: 8px 16px; border-radius: 6px; letter-spacing: 0.5px;
+  }
+  .next-btn:hover:not(:disabled) { background: #333; }
+
+  .warn-bottom {
+    display: flex; justify-content: space-between; gap: 12px;
+    margin-top: 12px; font-size: 12px; color: var(--wrong);
+  }
+
+  /* Results */
+  .score-big { font-size: 48px; font-weight: 700; text-align: center; margin: 12px 0; }
+  .score-sub { text-align: center; color: var(--muted); }
+  .breakdown-item { border-top: 1px solid var(--border); padding: 12px 0; }
+  .breakdown-item:first-child { border-top: none; }
+  .breakdown-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; cursor: pointer; }
+  .breakdown-detail { margin-top: 12px; padding: 12px; background: #f5f5f7; border-radius: 8px; font-size: 13px; display: none; }
+  .breakdown-detail.open { display: block; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge.correct { background: #e8f9ee; color: var(--correct); }
+  .badge.wrong { background: #ffeeee; color: var(--wrong); }
+
+  .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
+  .history-item:first-child { border-top: none; }
+
+  details { margin-top: 12px; }
+  summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+  code.blob { display: block; background: #f5f5f7; padding: 10px; border-radius: 6px; font-family: var(--mono); font-size: 11px; word-break: break-all; margin: 8px 0; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<video id="correctSound" preload="auto" playsinline style="display:none">
+  <source src="correct.mov" type="video/quicktime">
+</video>
+
+<script>
+"use strict";
+
+/* ============================================================
+   設定 - APIキーはサーバー側（/api/generate プロキシ経由）
+============================================================ */
+const API_ENDPOINT = "/api/generate";
+
+/* ============================================================
+   モード設定
+============================================================ */
+
+const JA_CHOICES = [
+  "文脈の論理から明らかに正しい。または正しい内容を含んでいる。",
+  "文脈の論理から明らかに間違っている。または間違った内容を含んでいる。",
+  "問題文の内容だけからでは、設問文は論理的に導けない。"
+];
+
+const MODES = {
+  ja: {
+    id: "ja",
+    label: "言語",
+    formatTitle: "玉手箱・GAB形式 / 論理的読解",
+    durationMin: 15,
+    numPassages: 8,
+    qsPerPassage: 4,
+    leadText: "次の文章を読み、設問文1つ1つについて以下のA、B、Cのいずれにあたるか答えなさい。",
+    choiceLabels: ["A", "B", "C"],
+    showFaqLink: false,
+    themes: [
+      "政治・民主主義", "経済・市場", "科学技術・AI", "環境問題・気候",
+      "教育・学び", "医療・公衆衛生", "労働・働き方", "国際関係・グローバル化"
+    ],
+    systemPrompt: `あなたは就職活動の適性検査（玉手箱・GAB形式）のプロの問題作成者です。
+以下のルールに従って、論理的読解問題を1セット作成してください。
+
+【問題の構成】
+1. 長文（400〜600字程度。論理展開が明確な評論文。）
+2. 設問4つ（長文の内容に関する短い記述）
+
+【選択肢の定義】（厳守）
+A: 文脈の論理から明らかに正しい。または正しい内容を含んでいる。
+B: 文脈の論理から明らかに間違っている。または間違った内容を含んでいる。
+C: 問題文の内容だけからでは、設問文は論理的に導けない。
+
+【問題作成の絶対条件】
+- 設問の正解は、A・B・Cが少なくとも1つずつ含まれるようにバランスよく配置。
+- Aの設問は、本文の言葉をそのまま使わず、同義語への言い換えや論理的な要約を含めること。
+- Bの設問は、本文の因果関係を逆転させたり、一部の条件を欠落させたりして作成。
+- Cの設問は、「一般常識としては正しいが本文には書かれていないこと」や「本文の一部に関連するが、結論までは言及されていない飛躍した推論」を意図的に作成し、受験者を引っかけること。
+- 設問文の末尾は「〜である。」など断定的な記述にする。
+
+出力は responseSchema に従ったJSONのみ。`,
+    schema: {
+      type: "object",
+      properties: {
+        passage: { type: "string" },
+        questions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "integer" },
+              statement: { type: "string" },
+              correct_answer: { type: "string", enum: ["A", "B", "C"] },
+              explanation: { type: "string" }
+            },
+            required: ["id", "statement", "correct_answer", "explanation"]
+          }
+        }
+      },
+      required: ["passage", "questions"]
+    },
+    buildUserMessage(theme, idx) {
+      return `テーマ:「${theme}」で論理的読解問題を1セット作成してください。（セット番号: ${idx + 1}）毎回違う題材で書いてください。`;
+    },
+    normalizeResponse(parsed) {
+      if (!parsed.passage || !Array.isArray(parsed.questions) || parsed.questions.length !== this.qsPerPassage) {
+        throw new Error("生成された問題の形式が不正です");
+      }
+      const map = { A:0, B:1, C:2 };
+      const questions = parsed.questions.map(q => {
+        if (typeof map[q.correct_answer] !== "number") throw new Error("correct_answerが不正");
+        return {
+          statement: q.statement,
+          choices: JA_CHOICES.slice(),
+          correct_index: map[q.correct_answer],
+          explanation: q.explanation
+        };
+      });
+      return { passage: parsed.passage, questions };
+    }
+  },
+
+  en: {
+    id: "en",
+    label: "英語",
+    formatTitle: "玉手箱・English / 英語長文読解",
+    durationMin: 10,
+    numPassages: 8,
+    qsPerPassage: 3,
+    leadText: "続く設問文の解答を5つの選択肢の中から1つ選びなさい。",
+    choiceLabels: null,
+    showFaqLink: true,
+    themes: [
+      "Family conversation about travel",
+      "Workplace discussion",
+      "School or university life",
+      "Shopping or dining out",
+      "Health and fitness",
+      "Hobby and sports",
+      "Technology and media",
+      "Environment and nature"
+    ],
+    systemPrompt: `You are a professional question writer for a Japanese job-aptitude English reading section (玉手箱 英語).
+
+Create one set of English reading-comprehension questions following these rules.
+
+【Passage】
+- A short English passage or dialogue, about 100–180 words.
+- If dialogue: use "Name: text" with a newline between speakers. Keep exchanges natural.
+- If article: one coherent paragraph about an everyday topic.
+
+【Questions】
+- Exactly 3 questions about the passage.
+- Mix factual (specific detail), inferential (what can be concluded), and vocabulary/paraphrase questions.
+- Each question has exactly 5 plausible choices; only one is correct; the other 4 are clearly wrong but tempting.
+
+【Output format】
+- JSON only, matching the responseSchema.
+- "passage" is the English text (use "\\n" between dialogue lines).
+- "statement" is the question in English.
+- "choices" is an array of 5 English strings.
+- "correct_index" is the integer index (0–4) of the correct choice.
+- "explanation" is written in Japanese, one or two sentences explaining why that choice is correct.`,
+    schema: {
+      type: "object",
+      properties: {
+        passage: { type: "string" },
+        questions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "integer" },
+              statement: { type: "string" },
+              choices: { type: "array", items: { type: "string" } },
+              correct_index: { type: "integer" },
+              explanation: { type: "string" }
+            },
+            required: ["id", "statement", "choices", "correct_index", "explanation"]
+          }
+        }
+      },
+      required: ["passage", "questions"]
+    },
+    buildUserMessage(theme, idx) {
+      return `Theme: "${theme}". Create one set of reading-comprehension questions (set #${idx + 1}). Pick a specific, different scenario each time.`;
+    },
+    normalizeResponse(parsed) {
+      if (!parsed.passage || !Array.isArray(parsed.questions) || parsed.questions.length !== this.qsPerPassage) {
+        throw new Error("生成された問題の形式が不正です");
+      }
+      const questions = parsed.questions.map(q => {
+        if (!Array.isArray(q.choices) || q.choices.length !== 5) throw new Error("選択肢が5つではありません");
+        if (typeof q.correct_index !== "number" || q.correct_index < 0 || q.correct_index > 4) throw new Error("correct_indexが不正");
+        return {
+          statement: q.statement,
+          choices: q.choices.slice(),
+          correct_index: q.correct_index,
+          explanation: q.explanation
+        };
+      });
+      return { passage: parsed.passage, questions };
+    }
+  },
+
+  num: {
+    id: "num",
+    label: "計数",
+    formatTitle: "玉手箱・GAB形式 / 計数",
+    durationMin: 15,
+    numPassages: 29,
+    qsPerPassage: 1,
+    leadText: "下記の表を読み取り、最も近いものを以下の選択肢の中から1つ選びなさい。",
+    choiceLabels: ["A", "B", "C", "D", "E"],
+    showFaqLink: true,
+    themes: [
+      "主要国の1人あたりGDPの推移",
+      "企業別の売上高と構成比",
+      "各国の輸出入額",
+      "業種別の国内市場シェア",
+      "都市別の人口推移",
+      "商品カテゴリー別売上",
+      "地域別のエネルギー消費量",
+      "年齢階層別の就業者数",
+      "国別の観光客数の推移",
+      "業界別の平均年収"
+    ],
+    systemPrompt: `あなたは就職活動の適性検査（玉手箱・GABの計数形式）のプロの問題作成者です。
+指定された chart_type に従って計数問題を1問作成してください。
+
+【chart_type の種類】
+1. "table": マークダウン形式の表データを読み取って計算する問題
+2. "pie": 円グラフ(構成比から実数を算出、または特定項目のシェアを問う)
+3. "bar": 棒グラフ(年次推移の比較、最大/最小、倍率、系列間比較)
+4. "line": 折れ線グラフ(増加率、ピーク年、傾向の読み取り、複数系列の交差)
+5. "table_blank": 表の一部を "?" で空欄にし、他の値や合計/割合から空欄の値を計算させる
+
+【chart_type ごとのデータフィールド（該当するものだけ埋める）】
+- table / table_blank: table_markdown にマークダウン形式の表(改行は "\\n")。table_blank では空欄セルの中身を "?" にする。
+- pie: pie_items に [{label, value}] の配列(最低3項目)。value は割合(%)か実数。unit に "%"や"百万円"等の単位。
+- bar / line: chart_categories にX軸カテゴリの配列、chart_series に [{name, values}] の配列(最低2系列推奨)。unit に単位。
+
+【ひっかけ要素(全chart_type共通)】
+- ダミー項目・系列（設問に使わないもの）を必ず含めて情報処理能力を試すこと
+- note に単位や為替の注記を入れて桁・為替の引っかけを作る
+- 選択肢A〜Eのうち正解以外は「よくある計算ミス」由来の数値にする
+  (分母分子を逆にした、桁を間違えた、ダミー項目を使った、%と実数を取り違えた 等)
+
+【解説(explanation)】
+- 必ずステップバイステップで計算式を書く(例:「合計=5127、構成比31% → 5127×0.31=1589.37 → 約1590」)
+- 自己検算してから出力すること
+
+出力は responseSchema に従ったJSONのみ。`,
+    schema: {
+      type: "object",
+      properties: {
+        theme: { type: "string" },
+        note: { type: "string" },
+        chart_type: { type: "string", enum: ["table", "pie", "bar", "line", "table_blank"] },
+        table_markdown: { type: "string" },
+        pie_items: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: { label: { type: "string" }, value: { type: "number" } },
+            required: ["label", "value"]
+          }
+        },
+        chart_categories: { type: "array", items: { type: "string" } },
+        chart_series: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              values: { type: "array", items: { type: "number" } }
+            },
+            required: ["name", "values"]
+          }
+        },
+        unit: { type: "string" },
+        statement: { type: "string" },
+        options: {
+          type: "object",
+          properties: {
+            A: { type: "string" },
+            B: { type: "string" },
+            C: { type: "string" },
+            D: { type: "string" },
+            E: { type: "string" }
+          },
+          required: ["A", "B", "C", "D", "E"]
+        },
+        correct_answer: { type: "string", enum: ["A", "B", "C", "D", "E"] },
+        explanation: { type: "string" }
+      },
+      required: ["theme", "chart_type", "statement", "options", "correct_answer", "explanation"]
+    },
+    buildUserMessage(theme, idx) {
+      const types = ["table", "pie", "bar", "line", "table_blank"];
+      const chosenType = types[idx % types.length];
+      return `テーマ:「${theme}」で計数問題を1問作成してください。chart_type は必ず「${chosenType}」にしてください。（セット番号: ${idx + 1}）毎回異なる具体データを使うこと。`;
+    },
+    normalizeResponse(parsed) {
+      const map = { A:0, B:1, C:2, D:3, E:4 };
+      if (typeof map[parsed.correct_answer] !== "number") throw new Error("correct_answerが不正");
+      if (!parsed.options) throw new Error("選択肢がありません");
+      const choices = ["A","B","C","D","E"].map(k => parsed.options[k]);
+      if (choices.some(c => !c)) throw new Error("選択肢の中身が欠落しています");
+
+      const chartType = parsed.chart_type || "table";
+      if (chartType === "table" || chartType === "table_blank") {
+        if (!parsed.table_markdown) throw new Error("table_markdownがありません");
+      } else if (chartType === "pie") {
+        if (!Array.isArray(parsed.pie_items) || parsed.pie_items.length < 2) throw new Error("pie_itemsが不正");
+      } else if (chartType === "bar" || chartType === "line") {
+        if (!Array.isArray(parsed.chart_categories) || parsed.chart_categories.length === 0) throw new Error("chart_categoriesが不正");
+        if (!Array.isArray(parsed.chart_series) || parsed.chart_series.length === 0) throw new Error("chart_seriesが不正");
+      }
+
+      return {
+        passage: "",
+        theme: parsed.theme || "",
+        note: parsed.note || "",
+        chartType,
+        chartData: {
+          table_markdown: parsed.table_markdown || "",
+          pie_items: parsed.pie_items || [],
+          chart_categories: parsed.chart_categories || [],
+          chart_series: parsed.chart_series || [],
+          unit: parsed.unit || ""
+        },
+        questions: [{
+          statement: parsed.statement,
+          choices,
+          correct_index: map[parsed.correct_answer],
+          explanation: parsed.explanation
+        }]
+      };
+    }
+  }
+};
+
+/* ============================================================
+   共通ヘルパ
+============================================================ */
+const BAR_WIDTH = 20;
+
+// コンボ構成: 複数セクションを連続受験
+const CHAINS = {
+  ja: ["ja"],
+  en: ["en"],
+  num: ["num"],
+  num_ja: ["num", "ja"],
+  num_ja_en: ["num", "ja", "en"]
+};
+const CHAIN_LABELS = {
+  ja: "言語",
+  en: "英語",
+  num: "計数",
+  num_ja: "計数+言語",
+  num_ja_en: "計数+言語+英語"
+};
+
+const getMode = () => MODES[state.language];
+const getDurationSec = () => getMode().durationMin * 60;
+const getNumPassages = () => getMode().numPassages;
+const getTotalQs = () => getMode().numPassages * getMode().qsPerPassage;
+const isCombo = () => state.chain && state.chain.length > 1;
+
+/* ============================================================
+   状態
+============================================================ */
+const state = {
+  accessToken: localStorage.getItem("accessToken") || "",
+  uiMode: (() => {
+    const m = localStorage.getItem("uiMode") || localStorage.getItem("language");
+    return CHAINS[m] ? m : "ja";
+  })(),
+  chain: null,       // ["ja"] or ["num","ja"] 等。setLanguage で初期化
+  chainIdx: 0,
+  chainResults: [],  // 完了セクションの { mode, score, total, elapsedSec, detail }
+  language: "ja",    // 現在のセクションのモードID
+  passages: [],
+  passagePromises: null,
+  passageErrors: {},
+  passageProgress: [],
+  generationStarted: false,
+  generationId: 0,
+  testStarted: false,
+  answers: {},
+  currentIdx: 0,
+  timeRemaining: 0,
+  timerInterval: null,
+  startTime: null,
+  lastError: null,
+};
+// 初期化
+state.chain = CHAINS[state.uiMode].slice();
+state.language = state.chain[0];
+state.timeRemaining = getDurationSec();
+
+const app = document.getElementById("app");
+
+/* ============================================================
+   Gemini API（ストリーミング）
+============================================================ */
+async function callGemini(theme, passageIndex, onProgress) {
+  const mode = getMode();
+  const body = {
+    systemInstruction: { parts: [{ text: mode.systemPrompt }] },
+    contents: [{ role: "user", parts: [{ text: mode.buildUserMessage(theme, passageIndex) }] }],
+    generationConfig: {
+      temperature: 0.9,
+      maxOutputTokens: 8192,
+      responseMimeType: "application/json",
+      responseSchema: mode.schema
+    }
+  };
+  const headers = { "Content-Type": "application/json" };
+  if (state.accessToken) headers["X-Access-Token"] = state.accessToken;
+  const res = await fetch(API_ENDPOINT, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    let errMsg = `HTTP ${res.status}`;
+    try { const j = await res.json(); errMsg = j?.error?.message || errMsg; } catch {}
+    if (res.status === 401) throw new Error("AUTH_REQUIRED");
+    if (res.status === 429) throw new Error("RATE_LIMITED: " + errMsg);
+    throw new Error(errMsg);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let accumulatedText = "";
+  let finishReason = null;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let nlIdx;
+    while ((nlIdx = buffer.indexOf("\n")) !== -1) {
+      const line = buffer.slice(0, nlIdx).trim();
+      buffer = buffer.slice(nlIdx + 1);
+      if (!line || !line.startsWith("data: ")) continue;
+      const payload = line.slice(6).trim();
+      if (payload === "[DONE]") continue;
+      try {
+        const event = JSON.parse(payload);
+        const candidate = event.candidates?.[0];
+        if (candidate) {
+          const deltaText = candidate.content?.parts?.[0]?.text;
+          if (deltaText) {
+            accumulatedText += deltaText;
+            if (onProgress) onProgress(accumulatedText.length);
+          }
+          if (candidate.finishReason) finishReason = candidate.finishReason;
+        }
+      } catch { /* ignore */ }
+    }
+  }
+
+  if (finishReason === "MAX_TOKENS") throw new Error("出力がトークン上限に達しました");
+  if (finishReason && finishReason !== "STOP") throw new Error("生成中断: " + finishReason);
+  if (!accumulatedText) throw new Error("レスポンスにテキストが含まれていません");
+
+  let parsed;
+  try { parsed = JSON.parse(accumulatedText); }
+  catch (e) { throw new Error("JSONパース失敗: " + e.message); }
+
+  return mode.normalizeResponse(parsed);
+}
+
+function ensureGenerationStarted() {
+  if (state.generationStarted) return;
+  const mode = getMode();
+  const n = mode.numPassages;
+  state.generationStarted = true;
+  state.generationId += 1;
+  const myGenId = state.generationId;
+  state.passages = new Array(n).fill(null);
+  state.passageErrors = {};
+  state.passageProgress = new Array(n).fill(0);
+  const themes = mode.themes.slice();
+  // 不足した場合はテーマをループ
+  state.passagePromises = [];
+  for (let i = 0; i < n; i++) {
+    const theme = themes[i % themes.length];
+    const stagger = i * 60; // 大量並列時のレート制限軽減（60ms ずつずらす）
+    const p = (async () => {
+      if (stagger > 0) await new Promise(r => setTimeout(r, stagger));
+      if (state.generationId !== myGenId) return;
+      return callGemini(theme, i, chars => {
+        if (state.generationId !== myGenId) return;
+        state.passageProgress[i] = chars;
+      });
+    })().then(
+      result => {
+        if (state.generationId !== myGenId || !result) return;
+        state.passages[i] = result;
+        onPassageUpdate(i);
+        return result;
+      },
+      err => {
+        if (state.generationId !== myGenId) return;
+        state.passageErrors[i] = err.message || String(err);
+        onPassageUpdate(i);
+        throw err;
+      }
+    );
+    state.passagePromises.push(p);
+  }
+}
+
+function onPassageUpdate(i) {
+  if (state.testStarted) {
+    const curP = Math.floor(state.currentIdx / getMode().qsPerPassage);
+    if (curP === i) renderTest();
+    return;
+  }
+  updatePrefetchStatus();
+}
+
+function updatePrefetchStatus() {
+  const el = document.getElementById("prefetchStatus");
+  if (!el || !state.passages || !state.passages.length) return;
+  const total = getNumPassages();
+  const done = state.passages.filter(p => p).length;
+  const errs = Object.keys(state.passageErrors).length;
+  if (errs > 0) {
+    el.className = "error";
+    el.textContent = `${errs} 問の生成に失敗しました`;
+  } else if (done === total) {
+    el.className = "notice";
+    el.textContent = `✓ 問題の準備が完了しました（${done}/${total}）`;
+  } else {
+    el.className = "muted";
+    el.style.fontSize = "13px";
+    el.textContent = `バックグラウンドで準備中... ${done}/${total}`;
+  }
+}
+
+/* ============================================================
+   ユーティリティ
+============================================================ */
+function render(html) { app.innerHTML = html; }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+}
+function renderBar(current, total, width = BAR_WIDTH) {
+  const ratio = total > 0 ? Math.min(1, current / total) : 0;
+  const filled = Math.round(width * ratio);
+  return "⬛".repeat(filled) + "⬜".repeat(width - filled);
+}
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem("history") || "[]"); } catch { return []; }
+}
+function saveHistory(entry) {
+  const list = loadHistory();
+  list.unshift(entry);
+  localStorage.setItem("history", JSON.stringify(list.slice(0, 20)));
+}
+function playCorrectSound() {
+  const s = document.getElementById("correctSound");
+  if (!s) return;
+  try {
+    s.currentTime = 0;
+    const p = s.play();
+    if (p && p.catch) p.catch(() => {});
+    setTimeout(() => { try { s.pause(); } catch {} }, 4000);
+  } catch {}
+}
+
+// マークダウン表 → HTMLテーブル（"?" セルは穴埋めとしてハイライト）
+function renderMarkdownTable(md) {
+  if (!md) return "";
+  const lines = md.split("\n").map(l => l.trim()).filter(l => l);
+  const rows = [];
+  for (const line of lines) {
+    if (!line.startsWith("|")) continue;
+    if (/^\|[\s\-:|]+\|?$/.test(line)) continue;
+    const stripped = line.replace(/^\|/, "").replace(/\|$/, "");
+    rows.push(stripped.split("|").map(c => c.trim()));
+  }
+  if (rows.length === 0) return `<pre class="raw-table">${escapeHtml(md)}</pre>`;
+  const [header, ...body] = rows;
+  return `
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>${header.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>
+        <tbody>${body.map(r => `<tr>${r.map(c => {
+          const blank = c === "?" || c === "？";
+          return `<td class="${blank ? "blank-cell" : ""}">${escapeHtml(c)}</td>`;
+        }).join("")}</tr>`).join("")}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ============================================================
+   SVGチャート描画
+============================================================ */
+const CHART_COLORS = ["#0071e3", "#34c759", "#ff9500", "#af52de", "#ff3b30", "#5ac8fa", "#ffcc00", "#8e8e93"];
+
+function renderPieChart(items, unit) {
+  if (!Array.isArray(items) || items.length === 0) return `<p class="muted">(データなし)</p>`;
+  const total = items.reduce((s, it) => s + Number(it.value || 0), 0);
+  if (total <= 0) return `<p class="muted">(合計0)</p>`;
+  const cx = 130, cy = 130, r = 105;
+  let ang = -Math.PI / 2;
+  const slices = items.map((it, i) => {
+    const v = Number(it.value || 0);
+    const portion = v / total;
+    const span = portion * Math.PI * 2;
+    const x1 = cx + r * Math.cos(ang);
+    const y1 = cy + r * Math.sin(ang);
+    const end = ang + span;
+    const x2 = cx + r * Math.cos(end);
+    const y2 = cy + r * Math.sin(end);
+    const large = span > Math.PI ? 1 : 0;
+    ang = end;
+    const color = CHART_COLORS[i % CHART_COLORS.length];
+    // 単一スライス(1.0)は円全体として描画
+    const path = items.length === 1
+      ? `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx} ${cy + r} A ${r} ${r} 0 1 1 ${cx} ${cy - r} Z`
+      : `M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`;
+    return { path, color, label: it.label, value: v, pct: portion * 100 };
+  });
+  const paths = slices.map(s => `<path d="${s.path}" fill="${s.color}" stroke="#fff" stroke-width="2"/>`).join("");
+  const legend = slices.map(s => `
+    <div style="display:flex;align-items:center;gap:6px;font-size:13px;margin:3px 0">
+      <span style="display:inline-block;width:14px;height:14px;background:${s.color};border-radius:3px;flex-shrink:0"></span>
+      <span>${escapeHtml(s.label)}: ${s.value}${unit ? escapeHtml(unit) : ""} (${s.pct.toFixed(1)}%)</span>
+    </div>
+  `).join("");
+  return `
+    <div class="chart-wrap" style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+      <svg width="260" height="260" viewBox="0 0 260 260" style="flex-shrink:0">${paths}</svg>
+      <div style="min-width:220px">${legend}</div>
+    </div>
+  `;
+}
+
+function renderBarChart(categories, series, unit) {
+  if (!Array.isArray(categories) || !Array.isArray(series) || series.length === 0) return `<p class="muted">(データなし)</p>`;
+  const allVals = series.flatMap(s => (s.values || []).map(Number).filter(v => isFinite(v)));
+  if (allVals.length === 0) return `<p class="muted">(数値データなし)</p>`;
+  const maxVal = Math.max(...allVals, 0);
+  if (maxVal <= 0) return `<p class="muted">(最大値0以下)</p>`;
+  const W = 620, H = 340, padL = 60, padR = 20, padT = 30, padB = 60;
+  const cw = W - padL - padR;
+  const ch = H - padT - padB;
+  const catCount = categories.length;
+  const groupW = cw / catCount;
+  const barW = Math.max(6, (groupW - 12) / series.length);
+
+  let svg = `<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width:620px">`;
+  const ticks = 5;
+  for (let i = 0; i <= ticks; i++) {
+    const tv = maxVal * i / ticks;
+    const y = padT + ch - (i / ticks) * ch;
+    svg += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#e5e5ea"/>`;
+    svg += `<text x="${padL - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="#6e6e73">${Math.round(tv).toLocaleString()}</text>`;
+  }
+  for (let ci = 0; ci < catCount; ci++) {
+    const gx = padL + ci * groupW;
+    for (let si = 0; si < series.length; si++) {
+      const v = Number((series[si].values || [])[ci]);
+      if (!isFinite(v) || v <= 0) continue;
+      const barH = (v / maxVal) * ch;
+      const bx = gx + 6 + si * barW;
+      const by = padT + ch - barH;
+      const color = CHART_COLORS[si % CHART_COLORS.length];
+      svg += `<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${(barW - 2).toFixed(1)}" height="${barH.toFixed(1)}" fill="${color}"/>`;
+    }
+    svg += `<text x="${gx + groupW/2}" y="${H - padB + 18}" text-anchor="middle" font-size="12" fill="#1d1d1f">${escapeHtml(categories[ci])}</text>`;
+  }
+  svg += `<line x1="${padL}" y1="${padT + ch}" x2="${W - padR}" y2="${padT + ch}" stroke="#1d1d1f"/>`;
+  svg += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + ch}" stroke="#1d1d1f"/>`;
+  if (unit) svg += `<text x="${padL - 4}" y="${padT - 10}" text-anchor="end" font-size="11" fill="#6e6e73">${escapeHtml(unit)}</text>`;
+  svg += `</svg>`;
+
+  const legend = series.map((s, i) => `
+    <span style="display:inline-flex;align-items:center;gap:6px;margin-right:12px;font-size:13px">
+      <span style="display:inline-block;width:12px;height:12px;background:${CHART_COLORS[i % CHART_COLORS.length]};border-radius:2px"></span>
+      ${escapeHtml(s.name)}
+    </span>
+  `).join("");
+  return `<div class="chart-wrap">${svg}<div style="margin-top:8px">${legend}</div></div>`;
+}
+
+function renderLineChart(categories, series, unit) {
+  if (!Array.isArray(categories) || !Array.isArray(series) || series.length === 0) return `<p class="muted">(データなし)</p>`;
+  const allVals = series.flatMap(s => (s.values || []).map(Number).filter(v => isFinite(v)));
+  if (allVals.length === 0) return `<p class="muted">(数値データなし)</p>`;
+  const maxVal = Math.max(...allVals);
+  const minVal = Math.min(0, ...allVals);
+  const range = (maxVal - minVal) || 1;
+  const W = 620, H = 340, padL = 60, padR = 20, padT = 30, padB = 60;
+  const cw = W - padL - padR;
+  const ch = H - padT - padB;
+  const catCount = categories.length;
+  const stepX = cw / Math.max(1, catCount - 1);
+
+  let svg = `<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width:620px">`;
+  const ticks = 5;
+  for (let i = 0; i <= ticks; i++) {
+    const tv = minVal + range * i / ticks;
+    const y = padT + ch - (i / ticks) * ch;
+    svg += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#e5e5ea"/>`;
+    svg += `<text x="${padL - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="#6e6e73">${Math.round(tv).toLocaleString()}</text>`;
+  }
+  for (let si = 0; si < series.length; si++) {
+    const color = CHART_COLORS[si % CHART_COLORS.length];
+    const vs = (series[si].values || []).map(Number);
+    const points = vs.map((v, ci) => {
+      if (!isFinite(v)) return null;
+      const x = padL + ci * stepX;
+      const y = padT + ch - ((v - minVal) / range) * ch;
+      return { x, y };
+    }).filter(Boolean);
+    if (points.length === 0) continue;
+    const d = points.map((p, i) => (i === 0 ? "M " : "L ") + p.x.toFixed(2) + " " + p.y.toFixed(2)).join(" ");
+    svg += `<path d="${d}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
+    for (const p of points) svg += `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="4" fill="${color}"/>`;
+  }
+  for (let ci = 0; ci < catCount; ci++) {
+    const x = padL + ci * stepX;
+    svg += `<text x="${x}" y="${H - padB + 18}" text-anchor="middle" font-size="12" fill="#1d1d1f">${escapeHtml(categories[ci])}</text>`;
+  }
+  svg += `<line x1="${padL}" y1="${padT + ch}" x2="${W - padR}" y2="${padT + ch}" stroke="#1d1d1f"/>`;
+  svg += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + ch}" stroke="#1d1d1f"/>`;
+  if (unit) svg += `<text x="${padL - 4}" y="${padT - 10}" text-anchor="end" font-size="11" fill="#6e6e73">${escapeHtml(unit)}</text>`;
+  svg += `</svg>`;
+
+  const legend = series.map((s, i) => `
+    <span style="display:inline-flex;align-items:center;gap:6px;margin-right:12px;font-size:13px">
+      <span style="display:inline-block;width:14px;height:2px;background:${CHART_COLORS[i % CHART_COLORS.length]}"></span>
+      ${escapeHtml(s.name)}
+    </span>
+  `).join("");
+  return `<div class="chart-wrap">${svg}<div style="margin-top:8px">${legend}</div></div>`;
+}
+
+function renderNumBody(p) {
+  const d = p.chartData || {};
+  let chartHtml;
+  switch (p.chartType) {
+    case "pie":  chartHtml = renderPieChart(d.pie_items, d.unit); break;
+    case "bar":  chartHtml = renderBarChart(d.chart_categories, d.chart_series, d.unit); break;
+    case "line": chartHtml = renderLineChart(d.chart_categories, d.chart_series, d.unit); break;
+    case "table":
+    case "table_blank":
+    default:     chartHtml = renderMarkdownTable(d.table_markdown);
+  }
+  return `
+    <div class="num-meta">
+      <h3 class="table-theme">${escapeHtml(p.theme || "")}</h3>
+      ${p.note ? `<p class="table-note">${escapeHtml(p.note)}</p>` : ""}
+    </div>
+    ${chartHtml}
+  `;
+}
+
+/* ============================================================
+   タイマー
+============================================================ */
+function startTimer() {
+  state.startTime = Date.now();
+  let lastElapsedMin = -1;
+  state.timerInterval = setInterval(() => {
+    state.timeRemaining -= 1;
+    const elapsedMin = Math.floor((getDurationSec() - state.timeRemaining) / 60);
+    if (elapsedMin !== lastElapsedMin) {
+      lastElapsedMin = elapsedMin;
+      updateStatusRow();
+    }
+    if (state.timeRemaining <= 0) { stopTimer(); finishTest(); }
+  }, 1000);
+}
+function stopTimer() { if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; } }
+
+function updateStatusRow() {
+  const el = document.getElementById("timeStatusRow");
+  if (!el) return;
+  const elapsedMin = Math.floor((getDurationSec() - state.timeRemaining) / 60);
+  const cls =
+    state.timeRemaining <= 60 ? "danger" :
+    state.timeRemaining <= 180 ? "warn" : "";
+  el.className = "status-row " + cls;
+  el.innerHTML = buildTimeRow(elapsedMin);
+}
+function buildTimeRow(elapsedMin) {
+  const durMin = getMode().durationMin;
+  return `
+    <div>
+      <span class="label">時間</span>　${elapsedMin}/${durMin}分
+      <span class="bar">${renderBar(elapsedMin, durMin)}</span>
+    </div>
+  `;
+}
+
+/* ============================================================
+   画面: アクセスパスワード（サーバー側で ACCESS_PASSWORD が設定されている場合）
+============================================================ */
+function renderAccessPrompt() {
+  render(`
+    <h1>🔒 アクセスパスワード</h1>
+    <div class="panel">
+      <p class="muted">このサイトはパスワード保護されています。</p>
+      ${state.lastError ? `<div class="error">${escapeHtml(state.lastError)}</div>` : ""}
+      <div class="field"><label>パスワード</label><input type="password" id="accessPw" autofocus></div>
+      <div class="row"><button id="submitPw">OK</button></div>
+    </div>
+  `);
+  const input = document.getElementById("accessPw");
+  const submit = () => {
+    state.accessToken = input.value.trim();
+    localStorage.setItem("accessToken", state.accessToken);
+    state.lastError = null;
+    renderSetup();
+  };
+  document.getElementById("submitPw").addEventListener("click", submit);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") submit(); });
+}
+
+/* ============================================================
+   画面: セットアップ
+============================================================ */
+function renderSetup() {
+  const history = loadHistory();
+  const mode = getMode();
+
+  const chain = state.chain;
+  const totalDuration = chain.reduce((s, m) => s + MODES[m].durationMin, 0);
+  const totalQs = chain.reduce((s, m) => s + MODES[m].numPassages * MODES[m].qsPerPassage, 0);
+
+  render(`
+    <h1>Webテスト</h1>
+    <p class="muted">${totalDuration}分 / ${totalQs}問 — ${CHAIN_LABELS[state.uiMode]}${isCombo() ? `（${chain.length}セクション連続）` : ""}</p>
+
+    ${state.lastError ? `<div class="error">${escapeHtml(state.lastError)}</div>` : ""}
+    <div id="prefetchStatus"></div>
+
+    <div class="panel">
+      <h2>テスト開始</h2>
+      <div class="field">
+        <label>科目</label>
+        <div class="lang-toggle" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <button class="lang-btn ${state.uiMode==='ja'?'active':''}" data-ui="ja">言語</button>
+          <button class="lang-btn ${state.uiMode==='en'?'active':''}" data-ui="en">英語</button>
+          <button class="lang-btn ${state.uiMode==='num'?'active':''}" data-ui="num">計数</button>
+          <button class="lang-btn ${state.uiMode==='num_ja'?'active':''}" data-ui="num_ja" style="grid-column:1/3;font-size:15px">計数+言語</button>
+          <button class="lang-btn ${state.uiMode==='num_ja_en'?'active':''}" data-ui="num_ja_en" style="grid-column:3/4;font-size:14px;padding:18px 6px">計数+言語+英語</button>
+        </div>
+      </div>
+      <div class="row">
+        <button id="startBtn">開始</button>
+        <button class="secondary" id="historyBtn">履歴 (${history.length})</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>${isCombo() ? "構成" : "問題形式"}</h2>
+      ${isCombo() ? `
+        <p style="font-size:14px">
+          以下のセクションを順に連続で受験します（各セクションに独立した制限時間）:
+        </p>
+        <ol style="font-size:14px;padding-left:20px;margin:8px 0">
+          ${chain.map(m => `<li><strong>${MODES[m].label}</strong>: ${MODES[m].durationMin}分 / ${MODES[m].numPassages * MODES[m].qsPerPassage}問</li>`).join("")}
+        </ol>
+      ` : (
+        mode.id === "ja" ? `
+          <p style="font-size:14px">
+            各長文につき4つの記述を読み、以下で判定:<br>
+            <strong>A.</strong> ${JA_CHOICES[0]}<br>
+            <strong>B.</strong> ${JA_CHOICES[1]}<br>
+            <strong>C.</strong> ${JA_CHOICES[2]}
+          </p>
+        ` : mode.id === "en" ? `
+          <p style="font-size:14px">
+            各長文につき3つの設問があり、それぞれ<strong>5択</strong>から1つ選びます。<br>
+            本文は英語の会話文・短文。設問と選択肢も英語、解説は日本語で出力されます。
+          </p>
+        ` : `
+          <p style="font-size:14px">
+            表・円/棒/折れ線グラフを読み取り、計算結果に最も近い選択肢（<strong>A〜Eの5択</strong>）を選びます。<br>
+            1問ごとに独立した図表が出題されます。
+          </p>
+        `
+      )}
+      <p class="muted" style="font-size:12px;margin-top:8px">※ 次の問題に進むと戻れません。</p>
+    </div>
+  `);
+
+  document.querySelectorAll(".lang-btn").forEach(btn => {
+    btn.addEventListener("click", () => setLanguage(btn.dataset.ui));
+  });
+  document.getElementById("startBtn").addEventListener("click", startTest);
+  document.getElementById("historyBtn").addEventListener("click", renderHistory);
+
+  ensureGenerationStarted();
+  updatePrefetchStatus();
+}
+
+function setLanguage(ui) {
+  if (!CHAINS[ui] || state.uiMode === ui) return;
+  state.uiMode = ui;
+  localStorage.setItem("uiMode", ui);
+  state.chain = CHAINS[ui].slice();
+  state.chainIdx = 0;
+  state.chainResults = [];
+  state.language = state.chain[0];
+  state.generationId += 1;
+  state.generationStarted = false;
+  state.passages = [];
+  state.passagePromises = null;
+  state.passageErrors = {};
+  state.passageProgress = [];
+  state.testStarted = false;
+  state.answers = {};
+  state.currentIdx = 0;
+  state.timeRemaining = getDurationSec();
+  renderSetup();
+}
+
+/* ============================================================
+   画面: 準備中
+============================================================ */
+function renderLoading() {
+  const total = getNumPassages();
+  const mode = getMode();
+  const done = state.passages.filter(p => p).length;
+  const pct = Math.round((done / total) * 100);
+  const progress = state.passageProgress || new Array(total).fill(0);
+  const label = mode.id === "num" ? "問" : "長文";
+  const rows = [];
+  for (let i = 0; i < total; i++) {
+    const ready = !!state.passages[i];
+    const err = state.passageErrors && state.passageErrors[i];
+    const chars = progress[i] || 0;
+    let statusHtml;
+    if (ready) statusHtml = `<span style="color:var(--correct);font-weight:600">✓ 完了</span>`;
+    else if (err) statusHtml = `<span style="color:var(--wrong)">× ${escapeHtml(err.slice(0, 40))}</span>`;
+    else if (chars > 0) statusHtml = `<span class="muted">生成中... ${chars}文字受信</span>`;
+    else statusHtml = `<span class="muted">待機中...</span>`;
+    rows.push(`
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px">
+        <span>${label} ${i + 1}</span>
+        ${statusHtml}
+      </div>
+    `);
+  }
+  render(`
+    <h1>問題を準備中...</h1>
+    <div class="panel">
+      <p class="muted">Gemini APIで ${total} ${label}をストリーミング並列生成中。</p>
+      <div class="progress-bar" style="margin:16px 0"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+      <p style="text-align:center;font-size:14px;font-weight:600">${done} / ${total} ${label}完了</p>
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+        ${rows.join("")}
+      </div>
+    </div>
+  `);
+}
+
+/* ============================================================
+   画面: テスト
+============================================================ */
+function renderTest() {
+  const mode = getMode();
+  const totalQ = getTotalQs();
+  const pIdx = Math.floor(state.currentIdx / mode.qsPerPassage);
+  const qIdx = state.currentIdx % mode.qsPerPassage;
+  const passage = state.passages[pIdx];
+
+  if (!passage) {
+    const err = state.passageErrors[pIdx];
+    render(`
+      <div class="panel" style="text-align:center">
+        <h2>問${state.currentIdx + 1}</h2>
+        ${err
+          ? `<div class="error">この問題の生成に失敗しました: ${escapeHtml(err)}</div>
+             <button class="next-btn" id="skipBtn">[ スキップ ]</button>`
+          : `<p class="muted">生成中です...</p>
+             <div class="progress-bar" style="margin:16px 0"><div class="progress-bar-fill" style="width:60%;animation:pulse 1.2s ease-in-out infinite"></div></div>`
+        }
+      </div>
+    `);
+    if (err) {
+      document.getElementById("skipBtn").addEventListener("click", () => {
+        if (state.currentIdx < totalQ - 1) { state.currentIdx += 1; renderTest(); }
+        else finishTest();
+      });
+    }
+    return;
+  }
+
+  const question = passage.questions[qIdx];
+  const selectedIdx = state.answers[state.currentIdx];
+  const locked = selectedIdx !== undefined;
+  const correctIdx = question.correct_index;
+  const isCorrect = locked && selectedIdx === correctIdx;
+  const answeredCount = Object.keys(state.answers).length;
+  const isLast = state.currentIdx === totalQ - 1;
+  const elapsedMin = Math.floor((getDurationSec() - state.timeRemaining) / 60);
+  const timeCls =
+    state.timeRemaining <= 60 ? "danger" :
+    state.timeRemaining <= 180 ? "warn" : "";
+
+  // 本文（モードにより切替）
+  let passageHtml;
+  if (mode.id === "num") {
+    passageHtml = renderNumBody(passage);
+  } else {
+    passageHtml = `<div class="passage-block">${escapeHtml(passage.passage)}</div>`;
+  }
+
+  render(`
+    <div class="panel">
+      ${mode.showFaqLink ? `<div class="faq-link">正しく受験できない方はFAQをご覧ください</div>` : ""}
+      <div>
+        <span class="q-num">問${state.currentIdx + 1}</span>
+        <span class="q-lead">${escapeHtml(mode.leadText)}</span>
+      </div>
+      ${passageHtml}
+
+      <hr class="divider">
+
+      <div class="q-statement">${escapeHtml(question.statement)}</div>
+
+      <hr class="divider">
+
+      <div class="choices-radio">
+        ${question.choices.map((text, idx) => {
+          const classes = ["choice-row"];
+          if (selectedIdx === idx) classes.push("selected");
+          if (locked) classes.push("locked");
+          if (locked && idx === correctIdx) classes.push("reveal-correct");
+          if (locked && idx === selectedIdx && !isCorrect) classes.push("reveal-wrong");
+          const icon = locked
+            ? (idx === correctIdx ? "○" : (idx === selectedIdx ? "×" : "◯"))
+            : (selectedIdx === idx ? "●" : "◯");
+          const labelPart = mode.choiceLabels ? `<strong>${mode.choiceLabels[idx]}.</strong> ` : "";
+          return `
+            <div class="${classes.join(" ")}" data-idx="${idx}">
+              <span class="radio-icon">${icon}</span>
+              <span>${labelPart}${escapeHtml(text)}</span>
+            </div>
+          `;
+        }).join("")}
+      </div>
+
+      ${locked ? `
+        <div class="feedback-banner ${isCorrect ? "ok" : "ng"}">
+          ${isCorrect ? "○ 正解!" : "× 不正解"}
+        </div>
+      ` : ""}
+
+      <div class="status-row">
+        <div>
+          <span class="label">回答数</span>　${answeredCount}/${totalQ}問
+          <span class="bar">${renderBar(answeredCount, totalQ)}</span>
+        </div>
+      </div>
+      <div id="timeStatusRow" class="status-row ${timeCls}">
+        ${buildTimeRow(elapsedMin)}
+      </div>
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px">
+        ${locked ? "" : `<span class="muted" style="font-size:12px">解答を選択してください</span>`}
+        <button class="next-btn" id="nextBtn" ${locked ? "" : "disabled"}>[ ${isLast ? "採点する" : "次へ進む"} ]</button>
+      </div>
+
+      <div class="warn-bottom">
+        <span>制限時間は${mode.durationMin}分です。</span>
+        <span>※次の問題へ進むと戻れません。</span>
+      </div>
+    </div>
+  `);
+
+  document.querySelectorAll(".choice-row").forEach(row => {
+    row.addEventListener("click", () => {
+      if (state.answers[state.currentIdx] !== undefined) return;
+      const idx = parseInt(row.dataset.idx, 10);
+      state.answers[state.currentIdx] = idx;
+      if (idx === question.correct_index) playCorrectSound();
+      renderTest();
+    });
+  });
+  document.getElementById("nextBtn").addEventListener("click", () => {
+    if (isLast) {
+      if (confirm("採点しますか？")) finishTest();
+    } else {
+      state.currentIdx += 1;
+      renderTest();
+    }
+  });
+}
+
+/* ============================================================
+   画面: 結果
+============================================================ */
+function renderResults(result) {
+  const combined = result.combined || [{ mode: state.language, ...result }];
+  const totalScore = combined.reduce((s, r) => s + r.score, 0);
+  const totalAll = combined.reduce((s, r) => s + r.total, 0);
+  const totalElapsed = combined.reduce((s, r) => s + r.elapsedSec, 0);
+  const pct = Math.round((totalScore / totalAll) * 100);
+  const m = Math.floor(totalElapsed / 60);
+  const s = totalElapsed % 60;
+
+  const sectionSummaries = combined.length > 1 ? `
+    <div class="panel">
+      <h2>セクション別スコア</h2>
+      ${combined.map(r => `
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border)">
+          <span>${escapeHtml(MODES[r.mode].label)}</span>
+          <span>${r.score} / ${r.total} (${Math.round(r.score/r.total*100)}%)</span>
+        </div>
+      `).join("")}
+    </div>
+  ` : "";
+
+  // 全セクションのdetailを globalIdx オフセット付きで1つにまとめる
+  let idxOffset = 0;
+  const sections = combined.map((r, secIdx) => {
+    const sec = {
+      modeLabel: MODES[r.mode].label,
+      detail: r.detail.map(d => ({ ...d, _absIdx: d.globalIdx + idxOffset, _secIdx: secIdx }))
+    };
+    idxOffset += r.total;
+    return sec;
+  });
+
+  render(`
+    <h1>結果</h1>
+    <div class="panel">
+      <div class="score-big">${totalScore} / ${totalAll}</div>
+      <div class="score-sub">正答率 ${pct}% ・ 総所要 ${m}分${s}秒</div>
+    </div>
+    ${sectionSummaries}
+    ${sections.map((sec, si) => `
+      <div class="panel">
+        <h2>${combined.length > 1 ? `[${escapeHtml(sec.modeLabel)}] ` : ""}解説</h2>
+        <p class="muted" style="font-size:13px">各項目をタップで詳細を展開</p>
+        ${sec.detail.map((d) => {
+          const i = d._absIdx;
+          return `
+          <div class="breakdown-item">
+            <div class="breakdown-head" data-toggle="${i}">
+              <div>
+                <strong>問${d.globalIdx+1}</strong>
+                <span class="muted" style="font-size:12px"> — ${d.isCorrect ? "正解" : "不正解"}</span>
+              </div>
+              <span class="badge ${d.isCorrect?"correct":"wrong"}">${d.isCorrect?"○":"×"}</span>
+            </div>
+            <div class="breakdown-detail" id="detail-${i}">
+              <p><strong>設問:</strong> ${escapeHtml(d.statement)}</p>
+              <p><strong>あなたの解答:</strong> ${d.userIdx !== null && d.userIdx !== undefined ? escapeHtml(d.choices[d.userIdx] || "") : "未回答"}</p>
+              <p><strong>正解:</strong> ${escapeHtml(d.choices[d.correctIdx] || "")}</p>
+              <p><strong>解説:</strong> ${escapeHtml(d.explanation)}</p>
+              <details style="margin-top:8px">
+                <summary class="muted">本文を見る</summary>
+                ${d.isNum
+                  ? renderNumBody({ theme: d.theme, note: d.note, chartType: d.chartType, chartData: d.chartData })
+                  : `<div class="passage-block" style="margin-top:8px">${escapeHtml(d.passage)}</div>`
+                }
+              </details>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    `).join("")}
+    <div class="row">
+      <button id="restartBtn">もう一度</button>
+      <button class="secondary" id="homeBtn">ホームへ</button>
+    </div>
+  `);
+  document.querySelectorAll("[data-toggle]").forEach(head => {
+    head.addEventListener("click", () => {
+      document.getElementById(`detail-${head.dataset.toggle}`).classList.toggle("open");
+    });
+  });
+  document.getElementById("restartBtn").addEventListener("click", resetAndSetup);
+  document.getElementById("homeBtn").addEventListener("click", resetAndSetup);
+}
+
+/* ============================================================
+   画面: 履歴
+============================================================ */
+function renderHistory() {
+  const list = loadHistory();
+  const langName = CHAIN_LABELS;
+  render(`
+    <h1>履歴</h1>
+    <div class="panel">
+      ${list.length === 0 ? `<p class="muted">履歴はまだありません。</p>` : list.map(h => `
+        <div class="history-item">
+          <div>
+            <div>${new Date(h.date).toLocaleString("ja-JP")}</div>
+            <div class="muted" style="font-size:12px">${langName[h.language] || h.language} ・ 所要 ${Math.floor(h.elapsedSec/60)}分${h.elapsedSec%60}秒</div>
+          </div>
+          <div style="font-size:18px;font-weight:600">${h.score} / ${h.total}</div>
+        </div>
+      `).join("")}
+      <div class="row" style="margin-top:16px">
+        <button class="secondary" id="backBtn">戻る</button>
+        ${list.length ? `<button class="ghost" id="clearBtn">履歴をクリア</button>` : ""}
+      </div>
+    </div>
+  `);
+  document.getElementById("backBtn").addEventListener("click", resetAndSetup);
+  const clr = document.getElementById("clearBtn");
+  if (clr) clr.addEventListener("click", () => {
+    if (confirm("履歴を削除しますか？")) { localStorage.removeItem("history"); renderHistory(); }
+  });
+}
+
+/* ============================================================
+   フロー
+============================================================ */
+async function startTest() {
+  state.lastError = null;
+  ensureGenerationStarted();
+
+  state.answers = {};
+  state.currentIdx = 0;
+  state.timeRemaining = getDurationSec();
+
+  const total = getNumPassages();
+  if (state.passages.length === total && state.passages.every(p => p)) {
+    state.testStarted = true;
+    renderTest();
+    startTimer();
+    return;
+  }
+
+  renderLoading();
+  const tick = setInterval(() => { if (!state.testStarted) renderLoading(); }, 300);
+
+  await Promise.allSettled(state.passagePromises);
+  // 失敗分は1回リトライ
+  const missingIdx = () => {
+    const arr = [];
+    for (let i = 0; i < total; i++) if (!state.passages[i]) arr.push(i);
+    return arr;
+  };
+  if (missingIdx().length > 0) {
+    const mode = getMode();
+    const myGenId = state.generationId;
+    const retries = missingIdx().map(i => {
+      const theme = mode.themes[i % mode.themes.length];
+      state.passageProgress[i] = 0;
+      return callGemini(theme, i, chars => {
+        if (state.generationId === myGenId) state.passageProgress[i] = chars;
+      }).then(
+        result => { if (state.generationId === myGenId) { state.passages[i] = result; delete state.passageErrors[i]; onPassageUpdate(i); } },
+        err => { if (state.generationId === myGenId) { state.passageErrors[i] = err.message || String(err); onPassageUpdate(i); } throw err; }
+      );
+    });
+    await Promise.allSettled(retries);
+  }
+  clearInterval(tick);
+
+  const still = missingIdx();
+  if (still.length > 0) {
+    const firstErr = state.passageErrors[still[0]] || "不明なエラー";
+    state.lastError = `${still.length} 問の生成に失敗しました: ${firstErr}（もう一度「開始」を押してください）`;
+    state.generationStarted = false;
+    renderSetup();
+    return;
+  }
+
+  state.testStarted = true;
+  renderTest();
+  startTimer();
+}
+
+function finishCurrentSection() {
+  stopTimer();
+  const mode = getMode();
+  const totalQ = getTotalQs();
+  const elapsedSec = getDurationSec() - state.timeRemaining;
+  let score = 0;
+  const detail = [];
+  for (let globalIdx = 0; globalIdx < totalQ; globalIdx++) {
+    const pIdx = Math.floor(globalIdx / mode.qsPerPassage);
+    const qIdx = globalIdx % mode.qsPerPassage;
+    const p = state.passages[pIdx];
+    if (!p) {
+      detail.push({
+        globalIdx, passageIdx: pIdx,
+        passage: "(生成されませんでした)",
+        statement: "(生成されませんでした)",
+        choices: [],
+        correctIdx: -1,
+        userIdx: state.answers[globalIdx] !== undefined ? state.answers[globalIdx] : null,
+        isCorrect: false,
+        explanation: "この問題は生成が間に合いませんでした。",
+        isNum: mode.id === "num"
+      });
+      continue;
+    }
+    const q = p.questions[qIdx];
+    const user = state.answers[globalIdx];
+    const isCorrect = user === q.correct_index;
+    if (isCorrect) score += 1;
+    detail.push({
+      globalIdx, passageIdx: pIdx,
+      passage: p.passage,
+      theme: p.theme || "",
+      note: p.note || "",
+      chartType: p.chartType || "",
+      chartData: p.chartData || null,
+      statement: q.statement,
+      choices: q.choices,
+      correctIdx: q.correct_index,
+      userIdx: user !== undefined ? user : null,
+      isCorrect,
+      explanation: q.explanation,
+      isNum: mode.id === "num"
+    });
+  }
+  const sectionResult = { mode: state.language, score, total: totalQ, elapsedSec, detail };
+  state.chainResults.push(sectionResult);
+
+  if (state.chainIdx + 1 < state.chain.length) {
+    // 次のセクションへ遷移
+    state.chainIdx += 1;
+    state.language = state.chain[state.chainIdx];
+    state.generationId += 1;
+    state.generationStarted = false;
+    state.passages = [];
+    state.passagePromises = null;
+    state.passageErrors = {};
+    state.passageProgress = [];
+    state.answers = {};
+    state.currentIdx = 0;
+    state.timeRemaining = getDurationSec();
+    state.testStarted = false;
+    renderSectionTransition(sectionResult);
+    return;
+  }
+
+  // 全セクション完了 → 集計して結果表示
+  const combined = state.chainResults;
+  const totalScore = combined.reduce((s, r) => s + r.score, 0);
+  const totalAll = combined.reduce((s, r) => s + r.total, 0);
+  const totalElapsed = combined.reduce((s, r) => s + r.elapsedSec, 0);
+  saveHistory({
+    date: new Date().toISOString(),
+    language: state.uiMode,
+    score: totalScore, total: totalAll, elapsedSec: totalElapsed
+  });
+  renderResults({ combined });
+}
+
+function finishTest() { finishCurrentSection(); }
+
+function renderSectionTransition(prevResult) {
+  const prevMode = MODES[prevResult.mode];
+  const nextMode = getMode();
+  const nextQ = getTotalQs();
+  ensureGenerationStarted();
+  render(`
+    <h1>セクション完了</h1>
+    <div class="panel">
+      <h2>${escapeHtml(prevMode.label)} セクション 結果</h2>
+      <div class="score-big">${prevResult.score} / ${prevResult.total}</div>
+      <div class="score-sub">正答率 ${Math.round(prevResult.score / prevResult.total * 100)}% ・ 所要 ${Math.floor(prevResult.elapsedSec/60)}分${prevResult.elapsedSec%60}秒</div>
+    </div>
+
+    <div class="panel">
+      <h2>次のセクション: ${escapeHtml(nextMode.label)}</h2>
+      <p class="muted">${nextMode.durationMin}分 / ${nextQ}問 （${state.chainIdx + 1}/${state.chain.length} セクション目）</p>
+      <div id="prefetchStatus"></div>
+      <div class="row" style="margin-top:12px">
+        <button id="nextSectionBtn">次のセクションを開始</button>
+      </div>
+    </div>
+  `);
+  updatePrefetchStatus();
+  document.getElementById("nextSectionBtn").addEventListener("click", startTest);
+}
+
+function resetAndSetup() {
+  stopTimer();
+  state.chain = CHAINS[state.uiMode].slice();
+  state.chainIdx = 0;
+  state.chainResults = [];
+  state.language = state.chain[0];
+  state.passages = [];
+  state.passagePromises = null;
+  state.passageErrors = {};
+  state.passageProgress = [];
+  state.generationStarted = false;
+  state.testStarted = false;
+  state.answers = {};
+  state.currentIdx = 0;
+  state.timeRemaining = getDurationSec();
+  state.lastError = null;
+  renderSetup();
+}
+
+/* 起動 */
+// サーバー側のパスワードが必要な場合は AUTH_REQUIRED エラーでプロンプト表示
+window.addEventListener("error", () => {});
+renderSetup();
+
+// グローバルエラーハンドラでAUTH_REQUIREDを検知
+const origStartTest = startTest;
+startTest = async function() {
+  try { await origStartTest(); } catch(e) {
+    if (String(e.message).includes("AUTH_REQUIRED")) { renderAccessPrompt(); }
+    else throw e;
+  }
+};
+</script>
+</body>
+</html>

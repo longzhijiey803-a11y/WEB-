@@ -1,0 +1,28 @@
+# 秘密情報 — 絶対にコミットしないこと
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Logs
+logs/
+*.log
+
+# ScreenRecording (元動画 - バイナリ大容量)
+ScreenRecording_*.mov
+
+# Render local testing
+.render/
