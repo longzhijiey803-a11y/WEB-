@@ -603,6 +603,29 @@ const app = document.getElementById("app");
    Gemini API（ストリーミング）
 ============================================================ */
 async function callGemini(theme, passageIndex, onProgress) {
+  // ネットワーク/ストリーミング切断時の自動リトライ
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await callGeminiOnce(theme, passageIndex, onProgress);
+    } catch (e) {
+      lastErr = e;
+      const msg = String(e.message || "");
+      // 認証・レート制限・バリデーションは即座にthrow（リトライ意味なし）
+      if (msg.includes("AUTH_REQUIRED") || msg.includes("RATE_LIMITED") ||
+          msg.includes("生成された問題の形式") || msg.includes("correct_") ||
+          msg.includes("選択肢") || msg.includes("table_markdown") ||
+          msg.includes("MAX_TOKENS")) break;
+      if (attempt < 2) {
+        // Load Failed / Network Error / 一時的な5xxはバックオフして再試行
+        await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastErr;
+}
+
+async function callGeminiOnce(theme, passageIndex, onProgress) {
   const mode = getMode();
   const body = {
     systemInstruction: { parts: [{ text: mode.systemPrompt }] },
