@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Webテスト（論理的読解・英語・計数）</title>
+<title>WEBテスト（玉手箱・C-GAB）模擬問題</title>
 <style>
   :root {
     --bg: #f5f5f7;
@@ -1025,7 +1025,7 @@ function renderSetup() {
   const totalQs = chain.reduce((s, m) => s + MODES[m].numPassages * MODES[m].qsPerPassage, 0);
 
   render(`
-    <h1>Webテスト</h1>
+    <h1>WEBテスト（玉手箱・C-GAB）模擬問題</h1>
     <p class="muted">${totalDuration}分 / ${totalQs}問 — ${CHAIN_LABELS[state.uiMode]}${isCombo() ? `（${chain.length}セクション連続）` : ""}</p>
 
     ${state.lastError ? `<div class="error">${escapeHtml(state.lastError)}</div>` : ""}
