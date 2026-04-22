@@ -56,6 +56,18 @@
 
   /* Language toggle */
   .lang-toggle { display: flex; gap: 12px; }
+  .start-btn-big {
+    background: var(--wrong);
+    color: white;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 16px 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(255,59,48,0.3);
+  }
+  .start-btn-big:hover:not(:disabled) {
+    background: #e0322a;
+  }
   .lang-btn {
     flex: 1;
     background: transparent;
@@ -1044,7 +1056,7 @@ function renderSetup() {
         </div>
       </div>
       <div class="row">
-        <button id="startBtn">開始</button>
+        <button class="start-btn-big" id="startBtn">開始</button>
         <button class="secondary" id="historyBtn">履歴 (${history.length})</button>
       </div>
     </div>
