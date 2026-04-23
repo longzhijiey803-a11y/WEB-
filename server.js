@@ -85,7 +85,16 @@ function checkRateLimit(ip) {
 }
 
 // ---------- 静的配信 ----------
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), {
+  setHeaders(res, filePath) {
+    // HTMLは毎回最新を取りに行く（キャッシュ無効）
+    if (filePath.endsWith(".html")) {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+    }
+  }
+}));
 
 // ---------- アクセスパスワード ----------
 function requireAccess(req, res, next) {
