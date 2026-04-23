@@ -603,30 +603,36 @@ const app = document.getElementById("app");
    Gemini API（ストリーミング）
 ============================================================ */
 async function callGemini(theme, passageIndex, onProgress) {
-  // ネットワーク/ストリーミング切断時の自動リトライ
+  // ネットワーク/ストリーミング切断・Geminiレート超過時の自動リトライ
   let lastErr;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
       return await callGeminiOnce(theme, passageIndex, onProgress);
     } catch (e) {
       lastErr = e;
       const msg = String(e.message || "");
-      // 認証・レート制限・バリデーションは即座にthrow（リトライ意味なし）
-      if (msg.includes("AUTH_REQUIRED") || msg.includes("RATE_LIMITED") ||
+      // 認証・バリデーションエラーは即座にthrow
+      if (msg.includes("AUTH_REQUIRED") ||
           msg.includes("生成された問題の形式") || msg.includes("correct_") ||
           msg.includes("選択肢") || msg.includes("table_markdown") ||
           msg.includes("MAX_TOKENS")) break;
-      if (attempt < 2) {
-        // Load Failed / Network Error / 一時的な5xxはバックオフして再試行
-        await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+
+      // Geminiの "Please retry in X.XXXs" を読み取って指定秒数待つ
+      const retryMatch = msg.match(/retry in (\d+(?:\.\d+)?)\s*s/i);
+      let waitMs;
+      if (retryMatch) {
+        waitMs = Math.min(60000, Math.ceil(parseFloat(retryMatch[1]) * 1000) + 500);
+      } else {
+        waitMs = 600 * (attempt + 1);
       }
+      if (attempt < 4) await new Promise(r => setTimeout(r, waitMs));
     }
   }
   throw lastErr;
 }
 
-// クライアント側レート制御（Gemini無料枠20RPMに合わせて18/分まで）
-const RATE_MAX_PER_MIN = 18;
+// クライアント側レート制御（Gemini無料枠10RPMに合わせて安全に9/分）
+const RATE_MAX_PER_MIN = 9;
 const _recentStarts = [];
 async function rateGate() {
   while (true) {
