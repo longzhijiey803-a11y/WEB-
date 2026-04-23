@@ -1482,8 +1482,8 @@ async function startTest() {
   state.currentIdx = 0;
   state.timeRemaining = getDurationSec();
 
-  const total = getNumPassages();
-  if (state.passages.length === total && state.passages.every(p => p)) {
+  // 最初の1本が準備できていれば即テスト開始。残りはバックグラウンドで順次生成
+  if (state.passages[0]) {
     state.testStarted = true;
     renderTest();
     startTimer();
@@ -1493,38 +1493,16 @@ async function startTest() {
   renderLoading();
   const tick = setInterval(() => { if (!state.testStarted) renderLoading(); }, 300);
 
-  await Promise.allSettled(state.passagePromises);
-  // 失敗分は1回リトライ
-  const missingIdx = () => {
-    const arr = [];
-    for (let i = 0; i < total; i++) if (!state.passages[i]) arr.push(i);
-    return arr;
-  };
-  if (missingIdx().length > 0) {
-    const mode = getMode();
-    const myGenId = state.generationId;
-    const retries = missingIdx().map(i => {
-      const theme = mode.themes[i % mode.themes.length];
-      state.passageProgress[i] = 0;
-      return callGemini(theme, i, chars => {
-        if (state.generationId === myGenId) state.passageProgress[i] = chars;
-      }).then(
-        result => { if (state.generationId === myGenId) { state.passages[i] = result; delete state.passageErrors[i]; onPassageUpdate(i); } },
-        err => { if (state.generationId === myGenId) { state.passageErrors[i] = err.message || String(err); onPassageUpdate(i); } throw err; }
-      );
-    });
-    await Promise.allSettled(retries);
-  }
-  clearInterval(tick);
-
-  const still = missingIdx();
-  if (still.length > 0) {
-    const firstErr = state.passageErrors[still[0]] || "不明なエラー";
-    state.lastError = `${still.length} 問の生成に失敗しました: ${firstErr}（もう一度「開始」を押してください）`;
+  try {
+    await state.passagePromises[0];
+  } catch (e) {
+    clearInterval(tick);
+    state.lastError = "最初の問題の生成に失敗しました: " + (e.message || e);
     state.generationStarted = false;
     renderSetup();
     return;
   }
+  clearInterval(tick);
 
   state.testStarted = true;
   renderTest();
