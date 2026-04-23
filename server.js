@@ -1,7 +1,7 @@
 // server.js — Gemini APIキーを秘匿するプロキシサーバー
 // 環境変数:
 //   GEMINI_API_KEY     (必須) Gemini APIキー
-//   GEMINI_MODEL       (任意) デフォルト gemini-2.5-flash
+//   GEMINI_MODEL       (任意) デフォルト gemini-2.5-flash-lite
 //   ACCESS_PASSWORD    (任意) 設定すると利用者にパスワード必須
 //   ADMIN_TOKEN        (任意) 監査ログ参照用トークン
 //   RATE_LIMIT_PER_MIN (任意) 1IPあたり1分間のリクエスト上限 (デフォルト 60)
@@ -17,7 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
 const API_KEY = process.env.GEMINI_API_KEY;
-const MODEL_ID = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MODEL_ID = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || "";
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
 const RATE_LIMIT_PER_MIN = Number(process.env.RATE_LIMIT_PER_MIN || 60);
@@ -193,8 +193,8 @@ app.get("/admin/summary", requireAdmin, (req, res) => {
   const authFail = auditLog.filter(x => x.event === "auth_fail");
   const totalIn = ok.reduce((s, x) => s + (x.promptTokens || 0), 0);
   const totalOut = ok.reduce((s, x) => s + (x.outputTokens || 0), 0);
-  // 概算コスト (gemini-2.5-flash 有料枠単価)
-  const costUSD = (totalIn * 0.30 + totalOut * 2.50) / 1_000_000;
+  // 概算コスト (gemini-2.5-flash-lite 有料枠単価)
+  const costUSD = (totalIn * 0.10 + totalOut * 0.40) / 1_000_000;
   res.json({
     okCount: ok.length,
     failedCount: failed.length,
