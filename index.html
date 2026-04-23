@@ -625,7 +625,21 @@ async function callGemini(theme, passageIndex, onProgress) {
   throw lastErr;
 }
 
+// クライアント側レート制御（Gemini無料枠20RPMに合わせて18/分まで）
+const RATE_MAX_PER_MIN = 18;
+const _recentStarts = [];
+async function rateGate() {
+  while (true) {
+    const now = Date.now();
+    while (_recentStarts.length > 0 && _recentStarts[0] < now - 60000) _recentStarts.shift();
+    if (_recentStarts.length < RATE_MAX_PER_MIN) { _recentStarts.push(now); return; }
+    const waitMs = _recentStarts[0] + 60000 - now + 50;
+    await new Promise(r => setTimeout(r, Math.max(100, waitMs)));
+  }
+}
+
 async function callGeminiOnce(theme, passageIndex, onProgress) {
+  await rateGate();
   const mode = getMode();
   const body = {
     systemInstruction: { parts: [{ text: mode.systemPrompt }] },
@@ -710,7 +724,7 @@ function ensureGenerationStarted() {
   state.passagePromises = [];
   for (let i = 0; i < n; i++) {
     const theme = themes[i % themes.length];
-    const stagger = i * 60; // 大量並列時のレート制限軽減（60ms ずつずらす）
+    const stagger = 0; // staggerは廃止（rateGate() が制御）
     const p = (async () => {
       if (stagger > 0) await new Promise(r => setTimeout(r, stagger));
       if (state.generationId !== myGenId) return;
