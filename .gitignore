@@ -4,6 +4,11 @@
 .env.*.local
 *.pem
 *.key
+# Google Cloud 認証情報
+*-sa.json
+service-account-*.json
+gcp-*.json
+application_default_credentials.json
 
 # Node.js
 node_modules/
