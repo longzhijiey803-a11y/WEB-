@@ -603,29 +603,34 @@ const app = document.getElementById("app");
    Gemini API（ストリーミング）
 ============================================================ */
 async function callGemini(theme, passageIndex, onProgress) {
-  // ネットワーク/ストリーミング切断・Geminiレート超過時の自動リトライ
+  // 最大10回の指数バックオフ + Geminiの retry-after を優先
+  const MAX_ATTEMPTS = 10;
   let lastErr;
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
       return await callGeminiOnce(theme, passageIndex, onProgress);
     } catch (e) {
       lastErr = e;
       const msg = String(e.message || "");
-      // 認証・バリデーションエラーは即座にthrow
+      // 復旧不可能な種類のエラーは即throw
       if (msg.includes("AUTH_REQUIRED") ||
           msg.includes("生成された問題の形式") || msg.includes("correct_") ||
           msg.includes("選択肢") || msg.includes("table_markdown") ||
           msg.includes("MAX_TOKENS")) break;
 
-      // Geminiの "Please retry in X.XXXs" を読み取って指定秒数待つ
+      if (attempt >= MAX_ATTEMPTS - 1) break;
+
+      // RATE_LIMITED / Load Failed / 5xx etc: 待機してリトライ
       const retryMatch = msg.match(/retry in (\d+(?:\.\d+)?)\s*s/i);
       let waitMs;
       if (retryMatch) {
-        waitMs = Math.min(60000, Math.ceil(parseFloat(retryMatch[1]) * 1000) + 500);
+        // Geminiの指定秒数 + 小バッファ
+        waitMs = Math.ceil(parseFloat(retryMatch[1]) * 1000) + 800;
       } else {
-        waitMs = 600 * (attempt + 1);
+        // 指数バックオフ: 1s, 2s, 4s, 8s, 16s, 32s...（上限60s）
+        waitMs = Math.min(60000, 1000 * Math.pow(2, attempt));
       }
-      if (attempt < 4) await new Promise(r => setTimeout(r, waitMs));
+      await new Promise(r => setTimeout(r, waitMs));
     }
   }
   throw lastErr;
@@ -727,31 +732,37 @@ function ensureGenerationStarted() {
   state.passageProgress = new Array(n).fill(0);
   const themes = mode.themes.slice();
   // 不足した場合はテーマをループ
+  // シーケンシャル実行: 1本ずつ処理し、完了後に最低5秒の待機を挟む
+  const SLEEP_BETWEEN_MS = 5000;
   state.passagePromises = [];
+  let chainPrev = Promise.resolve();
   for (let i = 0; i < n; i++) {
     const theme = themes[i % themes.length];
-    const stagger = 0; // staggerは廃止（rateGate() が制御）
-    const p = (async () => {
-      if (stagger > 0) await new Promise(r => setTimeout(r, stagger));
+    const idx = i;
+    const prev = chainPrev;
+    const p = prev.then(async () => {
       if (state.generationId !== myGenId) return;
-      return callGemini(theme, i, chars => {
+      try {
+        const result = await callGemini(theme, idx, chars => {
+          if (state.generationId !== myGenId) return;
+          state.passageProgress[idx] = chars;
+        });
         if (state.generationId !== myGenId) return;
-        state.passageProgress[i] = chars;
-      });
-    })().then(
-      result => {
-        if (state.generationId !== myGenId || !result) return;
-        state.passages[i] = result;
-        onPassageUpdate(i);
+        state.passages[idx] = result;
+        onPassageUpdate(idx);
         return result;
-      },
-      err => {
+      } catch (err) {
         if (state.generationId !== myGenId) return;
-        state.passageErrors[i] = err.message || String(err);
-        onPassageUpdate(i);
+        state.passageErrors[idx] = err.message || String(err);
+        onPassageUpdate(idx);
         throw err;
+      } finally {
+        // 最後以外は5秒スリープ
+        if (idx < n - 1) await new Promise(r => setTimeout(r, SLEEP_BETWEEN_MS));
       }
-    );
+    });
+    // チェーンは成功/失敗問わず先に進める
+    chainPrev = p.catch(() => {});
     state.passagePromises.push(p);
   }
 }
@@ -1187,7 +1198,7 @@ function renderLoading() {
     if (ready) statusHtml = `<span style="color:var(--correct);font-weight:600">✓ 完了</span>`;
     else if (err) statusHtml = `<span style="color:var(--wrong)">× ${escapeHtml(err.slice(0, 40))}</span>`;
     else if (chars > 0) statusHtml = `<span class="muted">生成中... ${chars}文字受信</span>`;
-    else statusHtml = `<span class="muted">待機中...</span>`;
+    else statusHtml = `<span class="muted">生成中...</span>`;
     rows.push(`
       <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px">
         <span>${label} ${i + 1}</span>
