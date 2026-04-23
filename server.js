@@ -20,8 +20,8 @@ const API_KEY = process.env.GEMINI_API_KEY;
 const MODEL_ID = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || "";
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
-const RATE_LIMIT_PER_MIN = Number(process.env.RATE_LIMIT_PER_MIN || 60);
-const RATE_LIMIT_PER_DAY = Number(process.env.RATE_LIMIT_PER_DAY || 500);
+const RATE_LIMIT_PER_MIN = Number(process.env.RATE_LIMIT_PER_MIN || 200);
+const RATE_LIMIT_PER_DAY = Number(process.env.RATE_LIMIT_PER_DAY || 2000);
 const GLOBAL_DAILY_CAP = Number(process.env.GLOBAL_DAILY_CAP || 5000);
 
 if (!API_KEY) {
