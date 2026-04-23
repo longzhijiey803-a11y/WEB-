@@ -636,21 +636,10 @@ async function callGemini(theme, passageIndex, onProgress) {
   throw lastErr;
 }
 
-// クライアント側レート制御（Gemini無料枠10RPMに合わせて安全に9/分）
-const RATE_MAX_PER_MIN = 9;
-const _recentStarts = [];
-async function rateGate() {
-  while (true) {
-    const now = Date.now();
-    while (_recentStarts.length > 0 && _recentStarts[0] < now - 60000) _recentStarts.shift();
-    if (_recentStarts.length < RATE_MAX_PER_MIN) { _recentStarts.push(now); return; }
-    const waitMs = _recentStarts[0] + 60000 - now + 50;
-    await new Promise(r => setTimeout(r, Math.max(100, waitMs)));
-  }
-}
+// Vertex AIに移行済みなのでクライアント側の厳しいレート制御は不要（no-op）
+async function rateGate() { /* Vertex AI: 並列許可 */ }
 
 async function callGeminiOnce(theme, passageIndex, onProgress) {
-  await rateGate();
   const mode = getMode();
   const body = {
     systemInstruction: { parts: [{ text: mode.systemPrompt }] },
@@ -732,43 +721,29 @@ function ensureGenerationStarted() {
   state.passageProgress = new Array(n).fill(0);
   const themes = mode.themes.slice();
   // 不足した場合はテーマをループ
-  // シーケンシャル実行: 1本ずつ処理、各完了後に5秒のクールダウン
-  // 重要: passagePromises[i] は「本文が取得できた瞬間」に解決させる（スリープは含めない）
-  const SLEEP_BETWEEN_MS = 5000;
+  // Vertex AI: 全問を並列で生成
   state.passagePromises = [];
-  let chainPrev = Promise.resolve();
   for (let i = 0; i < n; i++) {
     const theme = themes[i % themes.length];
     const idx = i;
-    const prev = chainPrev;
-
-    // 本文取得完了を通知する外部可視のPromise
-    let resolveReady, rejectReady;
-    const readyPromise = new Promise((res, rej) => { resolveReady = res; rejectReady = rej; });
-
-    // 内部チェーン: 前の本文のクールダウンが終わってから生成開始
-    const chainStep = prev.then(async () => {
-      if (state.generationId !== myGenId) { resolveReady(); return; }
-      try {
-        const result = await callGemini(theme, idx, chars => {
-          if (state.generationId !== myGenId) return;
-          state.passageProgress[idx] = chars;
-        });
-        if (state.generationId !== myGenId) { resolveReady(); return; }
+    const p = callGemini(theme, idx, chars => {
+      if (state.generationId !== myGenId) return;
+      state.passageProgress[idx] = chars;
+    }).then(
+      result => {
+        if (state.generationId !== myGenId) return;
         state.passages[idx] = result;
         onPassageUpdate(idx);
-        resolveReady(result);  // ←生成完了した瞬間に外部に通知
-      } catch (err) {
-        if (state.generationId !== myGenId) { resolveReady(); return; }
+        return result;
+      },
+      err => {
+        if (state.generationId !== myGenId) return;
         state.passageErrors[idx] = err.message || String(err);
         onPassageUpdate(idx);
-        rejectReady(err);
+        throw err;
       }
-      // 次の本文に進む前のクールダウン（外部Promiseはもう解決済みなので影響しない）
-      if (idx < n - 1) await new Promise(r => setTimeout(r, SLEEP_BETWEEN_MS));
-    });
-    chainPrev = chainStep.catch(() => {});
-    state.passagePromises.push(readyPromise);
+    );
+    state.passagePromises.push(p);
   }
 }
 
