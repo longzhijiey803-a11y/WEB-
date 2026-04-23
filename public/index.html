@@ -732,7 +732,8 @@ function ensureGenerationStarted() {
   state.passageProgress = new Array(n).fill(0);
   const themes = mode.themes.slice();
   // 不足した場合はテーマをループ
-  // シーケンシャル実行: 1本ずつ処理し、完了後に最低5秒の待機を挟む
+  // シーケンシャル実行: 1本ずつ処理、各完了後に5秒のクールダウン
+  // 重要: passagePromises[i] は「本文が取得できた瞬間」に解決させる（スリープは含めない）
   const SLEEP_BETWEEN_MS = 5000;
   state.passagePromises = [];
   let chainPrev = Promise.resolve();
@@ -740,30 +741,34 @@ function ensureGenerationStarted() {
     const theme = themes[i % themes.length];
     const idx = i;
     const prev = chainPrev;
-    const p = prev.then(async () => {
-      if (state.generationId !== myGenId) return;
+
+    // 本文取得完了を通知する外部可視のPromise
+    let resolveReady, rejectReady;
+    const readyPromise = new Promise((res, rej) => { resolveReady = res; rejectReady = rej; });
+
+    // 内部チェーン: 前の本文のクールダウンが終わってから生成開始
+    const chainStep = prev.then(async () => {
+      if (state.generationId !== myGenId) { resolveReady(); return; }
       try {
         const result = await callGemini(theme, idx, chars => {
           if (state.generationId !== myGenId) return;
           state.passageProgress[idx] = chars;
         });
-        if (state.generationId !== myGenId) return;
+        if (state.generationId !== myGenId) { resolveReady(); return; }
         state.passages[idx] = result;
         onPassageUpdate(idx);
-        return result;
+        resolveReady(result);  // ←生成完了した瞬間に外部に通知
       } catch (err) {
-        if (state.generationId !== myGenId) return;
+        if (state.generationId !== myGenId) { resolveReady(); return; }
         state.passageErrors[idx] = err.message || String(err);
         onPassageUpdate(idx);
-        throw err;
-      } finally {
-        // 最後以外は5秒スリープ
-        if (idx < n - 1) await new Promise(r => setTimeout(r, SLEEP_BETWEEN_MS));
+        rejectReady(err);
       }
+      // 次の本文に進む前のクールダウン（外部Promiseはもう解決済みなので影響しない）
+      if (idx < n - 1) await new Promise(r => setTimeout(r, SLEEP_BETWEEN_MS));
     });
-    // チェーンは成功/失敗問わず先に進める
-    chainPrev = p.catch(() => {});
-    state.passagePromises.push(p);
+    chainPrev = chainStep.catch(() => {});
+    state.passagePromises.push(readyPromise);
   }
 }
 
@@ -1636,18 +1641,14 @@ function resetAndSetup() {
 }
 
 /* 起動 */
-// サーバー側のパスワードが必要な場合は AUTH_REQUIRED エラーでプロンプト表示
-window.addEventListener("error", () => {});
-renderSetup();
-
-// グローバルエラーハンドラでAUTH_REQUIREDを検知
-const origStartTest = startTest;
-startTest = async function() {
-  try { await origStartTest(); } catch(e) {
-    if (String(e.message).includes("AUTH_REQUIRED")) { renderAccessPrompt(); }
-    else throw e;
+// AUTH_REQUIRED のハンドリングは startTest / callGemini 内の例外で処理される
+window.addEventListener("unhandledrejection", e => {
+  if (String(e.reason?.message || "").includes("AUTH_REQUIRED")) {
+    renderAccessPrompt();
+    e.preventDefault();
   }
-};
+});
+renderSetup();
 </script>
 </body>
 </html>
