@@ -233,6 +233,58 @@ app.delete("/admin/api/users/:id", requireAdmin, async (req, res) => {
   }
 });
 
+// テスト結果一覧（ユーザー情報 JOIN）
+app.get("/admin/api/results", requireAdmin, async (_req, res) => {
+  if (!requireSupabaseService(res)) return;
+  try {
+    const [resultsRes, authRes, profRes] = await Promise.all([
+      supabaseFetch(`/rest/v1/test_results?select=*&order=completed_at.desc&limit=1000`),
+      supabaseFetch(`/auth/v1/admin/users?per_page=1000`),
+      supabaseFetch(`/rest/v1/profiles?select=*`)
+    ]);
+    if (!resultsRes.ok) {
+      const t = await resultsRes.text();
+      return res.status(500).json({ error: "results fetch failed", detail: t.slice(0, 200) });
+    }
+    const results = await resultsRes.json();
+    const authData = authRes.ok ? await authRes.json() : { users: [] };
+    const profiles = profRes.ok ? await profRes.json() : [];
+
+    const byId = new Map();
+    for (const u of authData.users || []) byId.set(u.id, { email: u.email });
+    for (const p of profiles) {
+      const prev = byId.get(p.id) || {};
+      byId.set(p.id, { ...prev, nickname: p.nickname, university: p.university });
+    }
+    const enriched = results.map(r => {
+      const info = byId.get(r.user_id) || {};
+      const accuracy = r.total > 0 ? Math.round((r.score / r.total) * 1000) / 10 : 0;
+      return { ...r, email: info.email || null, nickname: info.nickname || null, university: info.university || null, accuracy };
+    });
+
+    // モード別サマリ
+    const modeStats = {};
+    for (const r of enriched) {
+      const m = r.mode || "unknown";
+      if (!modeStats[m]) modeStats[m] = { count: 0, totalScore: 0, totalQs: 0, totalDurationSec: 0 };
+      modeStats[m].count++;
+      modeStats[m].totalScore += r.score || 0;
+      modeStats[m].totalQs += r.total || 0;
+      modeStats[m].totalDurationSec += r.duration_sec || 0;
+    }
+    const summaryByMode = Object.entries(modeStats).map(([mode, s]) => ({
+      mode,
+      attempts: s.count,
+      avgAccuracy: s.totalQs > 0 ? Math.round((s.totalScore / s.totalQs) * 1000) / 10 : 0,
+      avgDurationSec: s.count > 0 ? Math.round(s.totalDurationSec / s.count) : 0
+    }));
+
+    res.json({ results: enriched, summaryByMode, total: enriched.length });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
 // 統計（アクセス数・アクティブユーザー）
 app.get("/admin/api/stats", requireAdmin, async (_req, res) => {
   const now = Date.now();

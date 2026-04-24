@@ -6,61 +6,72 @@
 <meta name="robots" content="noindex, nofollow, noarchive">
 <title>管理画面 — ユーザー一覧</title>
 <style>
+  :root {
+    --bg: #f5f5f7; --panel: #ffffff; --text: #1d1d1f; --muted: #6e6e73;
+    --border: #d2d2d7; --accent: #0071e3; --accent-hover: #0077ed;
+    --correct: #34c759; --wrong: #ff3b30; --chip: #f0f0f5;
+    --shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Sans", "Yu Gothic", sans-serif; background: #0a0a0a; color: #e5e5e5; line-height: 1.55; -webkit-text-size-adjust: 100%; }
-  header { background: #161616; border-bottom: 1px solid #2a2a2a; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; flex-wrap: wrap; gap: 8px; }
-  header h1 { font-size: 15px; margin: 0; }
+  html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Sans", "Yu Gothic", sans-serif; background: var(--bg); color: var(--text); line-height: 1.55; -webkit-text-size-adjust: 100%; }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; flex-wrap: wrap; gap: 8px; box-shadow: var(--shadow); }
+  header h1 { font-size: 16px; margin: 0; }
   header .right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .container { padding: 14px; }
-  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
-  .stat { background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px 14px; }
-  .stat .n { font-size: 22px; font-weight: 700; }
-  .stat .lbl { font-size: 11px; color: #888; margin-top: 2px; }
-  .stat.primary { background: linear-gradient(135deg, #1e3a8a, #1e40af); border-color: #3b82f6; }
-  .tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid #2a2a2a; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .tab { padding: 9px 14px; cursor: pointer; font-size: 13px; color: #888; border-bottom: 2px solid transparent; user-select: none; white-space: nowrap; }
-  .tab.active { color: #e5e5e5; border-bottom-color: #3b82f6; }
+  .container { padding: 16px; max-width: 1400px; margin: 0 auto; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); }
+  .stat .n { font-size: 26px; font-weight: 700; color: var(--text); }
+  .stat .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: 0.3px; }
+  .stat.primary { background: linear-gradient(135deg, #0071e3, #5ac8fa); border-color: #0071e3; }
+  .stat.primary .n, .stat.primary .lbl { color: #fff; }
+  .stat.primary .lbl { opacity: 0.9; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--panel); border-radius: 10px 10px 0 0; padding: 0 4px; }
+  .tab { padding: 11px 16px; cursor: pointer; font-size: 14px; color: var(--muted); border-bottom: 2px solid transparent; user-select: none; white-space: nowrap; font-weight: 500; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
   .toolbar { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
-  input[type="text"] { padding: 10px 12px; border: 1px solid #333; border-radius: 6px; background: #0a0a0a; color: #e5e5e5; font-family: inherit; font-size: 14px; min-width: 200px; flex: 1; max-width: 320px; }
-  button { background: #1d4ed8; color: white; border: none; padding: 9px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: inherit; min-height: 38px; }
-  button.secondary { background: transparent; color: #e5e5e5; border: 1px solid #333; }
-  button.danger { background: #991b1b; padding: 6px 10px; min-height: auto; font-size: 12px; }
-  button:hover:not(:disabled) { opacity: 0.85; }
-  .table-wrap { background: #121212; border: 1px solid #2a2a2a; border-radius: 8px; overflow: auto; max-height: calc(100vh - 280px); -webkit-overflow-scrolling: touch; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 680px; }
-  th, td { padding: 8px 10px; border-bottom: 1px solid #222; text-align: left; vertical-align: top; white-space: nowrap; }
-  th { background: #161616; position: sticky; top: 0; font-weight: 600; font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; z-index: 1; }
-  tr:hover { background: #181818; }
-  .badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; }
-  .badge.ok { background: #064e3b; color: #6ee7b7; }
-  .badge.no { background: #5a1a1a; color: #ff8787; }
-  .empty { padding: 40px; text-align: center; color: #888; font-size: 14px; }
-  .err { background: #2a1010; color: #ff6b6b; padding: 9px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 10px; border: 1px solid #4a1818; }
-  code { background: #0a0a0a; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+  input[type="text"] { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--text); font-family: inherit; font-size: 14px; min-width: 200px; flex: 1; max-width: 320px; }
+  button { background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit; min-height: 40px; font-weight: 500; }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+  button.secondary:hover:not(:disabled) { background: #f0f0f5; }
+  button.danger { background: var(--wrong); padding: 6px 12px; min-height: auto; font-size: 12px; }
+  button.danger:hover:not(:disabled) { background: #d92d22; }
+  .table-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: auto; max-height: calc(100vh - 280px); -webkit-overflow-scrolling: touch; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 680px; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; white-space: nowrap; }
+  th { background: #fafafa; position: sticky; top: 0; font-weight: 600; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; z-index: 1; }
+  tr:hover { background: #fafafa; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+  .badge.ok { background: #e8f9ee; color: var(--correct); }
+  .badge.no { background: #ffeeee; color: var(--wrong); }
+  .empty { padding: 44px; text-align: center; color: var(--muted); font-size: 14px; }
+  .err { background: #fff2f2; color: var(--wrong); padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 10px; border: 1px solid #ffd4d4; }
+  code { background: #f0f0f5; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--text); }
 
   /* アクセス推移チャート */
-  .chart-box { background: #121212; border: 1px solid #2a2a2a; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
-  .chart-box h3 { margin: 0 0 10px; font-size: 13px; color: #aaa; font-weight: 600; }
-  .bar-chart { display: flex; align-items: flex-end; gap: 3px; height: 140px; }
-  .bar-chart .bar { flex: 1; background: linear-gradient(to top, #1d4ed8, #3b82f6); border-radius: 2px 2px 0 0; min-height: 2px; position: relative; }
-  .bar-chart .bar:hover::after { content: attr(data-val); position: absolute; top: -22px; left: 50%; transform: translateX(-50%); background: #1d4ed8; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; white-space: nowrap; }
-  .chart-labels { display: flex; justify-content: space-between; font-size: 10px; color: #666; margin-top: 4px; }
+  .chart-box { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .chart-box h3 { margin: 0 0 12px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .bar-chart { display: flex; align-items: flex-end; gap: 3px; height: 140px; padding-top: 10px; }
+  .bar-chart .bar { flex: 1; background: linear-gradient(to top, #0071e3, #5ac8fa); border-radius: 3px 3px 0 0; min-height: 2px; position: relative; }
+  .bar-chart .bar:hover::after { content: attr(data-val); position: absolute; top: -24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: white; padding: 3px 7px; border-radius: 4px; font-size: 11px; white-space: nowrap; }
+  .chart-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 6px; }
 
   /* モバイル */
   @media (max-width: 640px) {
     header { padding: 10px 12px; }
-    header h1 { font-size: 14px; width: 100%; }
+    header h1 { font-size: 15px; width: 100%; }
     header .right { width: 100%; }
-    .container { padding: 10px; }
+    header .right button { flex: 1; }
+    .container { padding: 12px 10px; }
     .stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .stat { padding: 10px 12px; }
-    .stat .n { font-size: 18px; }
+    .stat { padding: 12px; }
+    .stat .n { font-size: 20px; }
     .toolbar { flex-direction: column; align-items: stretch; }
     input[type="text"] { max-width: 100%; width: 100%; }
-    button { width: 100%; }
+    .toolbar button { width: 100%; }
     .table-wrap { max-height: calc(100vh - 320px); }
-    table { font-size: 11px; }
-    th, td { padding: 6px 8px; }
+    table { font-size: 12px; }
+    th, td { padding: 8px 10px; }
   }
 </style>
 </head>
@@ -89,6 +100,7 @@
   <div class="tabs">
     <div class="tab active" data-tab="stats">統計</div>
     <div class="tab" data-tab="users">ユーザー</div>
+    <div class="tab" data-tab="results">テスト結果</div>
     <div class="tab" data-tab="consents">同意ログ</div>
   </div>
 
@@ -138,6 +150,32 @@
         </thead>
         <tbody id="usersBody">
           <tr><td colspan="9" class="empty">読み込み中…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-results" style="display:none">
+    <div id="modeSummary" class="stats" style="margin-bottom:14px"></div>
+    <div class="toolbar">
+      <input type="text" id="searchResults" placeholder="ユーザー名 / 大学 / モード で検索…">
+      <button id="exportResultsBtn">CSVエクスポート</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>受験日時</th>
+            <th>ユーザー</th>
+            <th>大学</th>
+            <th>モード</th>
+            <th>スコア</th>
+            <th>正答率</th>
+            <th>所要時間</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody">
+          <tr><td colspan="7" class="empty">タブを開くと読み込みます</td></tr>
         </tbody>
       </table>
     </div>
@@ -207,9 +245,10 @@ async function fetchUsers() {
     const j = await r.json();
     allUsers = j.users || [];
     renderUsers();
-    document.getElementById("statTotal").textContent = allUsers.length;
-    document.getElementById("statConfirmed").textContent = allUsers.filter(u => u.email_confirmed_at).length;
-    document.getElementById("statProfiles").textContent = allUsers.filter(u => u.nickname).length;
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setVal("statTotal", allUsers.length);
+    setVal("statConfirmed", allUsers.filter(u => u.email_confirmed_at).length);
+    setVal("statProfiles", allUsers.filter(u => u.nickname).length);
     hideErr();
   } catch (e) {
     showErr("通信エラー: " + e.message);
@@ -299,9 +338,89 @@ document.querySelectorAll(".tab").forEach(t => {
     document.getElementById("tab-stats").style.display = name === "stats" ? "" : "none";
     document.getElementById("tab-users").style.display = name === "users" ? "" : "none";
     document.getElementById("tab-consents").style.display = name === "consents" ? "" : "none";
+    document.getElementById("tab-results").style.display = name === "results" ? "" : "none";
     if (name === "consents") fetchConsents();
     if (name === "stats") fetchStats();
+    if (name === "results") fetchResults();
   });
+});
+
+const MODE_LABELS = { ja: "言語", en: "英語", num: "計数", num_ja: "計数+言語", num_ja_en: "計数+言語+英語" };
+let allResults = [];
+let resultsLoaded = false;
+let resultFilter = "";
+
+async function fetchResults() {
+  try {
+    const r = await fetch("/admin/api/results", { credentials: "same-origin" });
+    if (r.status === 401) { location.href = "/admin-login"; return; }
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      showErr("テスト結果取得に失敗: " + (j.error || r.status) + (j.detail ? " / " + j.detail : ""));
+      return;
+    }
+    const j = await r.json();
+    allResults = j.results || [];
+    // モード別サマリ表示
+    const sum = j.summaryByMode || [];
+    const summaryEl = document.getElementById("modeSummary");
+    if (sum.length === 0) {
+      summaryEl.innerHTML = '<div class="stat" style="grid-column:1/-1"><div class="n">0</div><div class="lbl">まだ受験データがありません</div></div>';
+    } else {
+      summaryEl.innerHTML = sum.map(s => `
+        <div class="stat">
+          <div class="n">${s.avgAccuracy}%</div>
+          <div class="lbl">${esc(MODE_LABELS[s.mode] || s.mode)} 平均正答率（${s.attempts}回）</div>
+        </div>
+      `).join("");
+    }
+    renderResults();
+    resultsLoaded = true;
+  } catch (e) {
+    showErr("通信エラー: " + e.message);
+  }
+}
+
+function renderResults() {
+  const tbody = document.getElementById("resultsBody");
+  const q = resultFilter.trim().toLowerCase();
+  const list = q ? allResults.filter(r => [r.email, r.nickname, r.university, r.mode, MODE_LABELS[r.mode]].some(v => (v || "").toLowerCase().includes(q))) : allResults;
+  if (list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">該当する受験データがありません</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(r => {
+    const mm = Math.floor((r.duration_sec || 0) / 60);
+    const ss = (r.duration_sec || 0) % 60;
+    return `
+    <tr>
+      <td style="color:var(--muted);font-size:12px">${esc(fmtDate(r.completed_at))}</td>
+      <td>${esc(r.nickname || "—")}<br><code style="font-size:10px">${esc(r.email || "")}</code></td>
+      <td>${esc(r.university || "—")}</td>
+      <td><span class="badge ok">${esc(MODE_LABELS[r.mode] || r.mode || "—")}</span></td>
+      <td><strong>${r.score}</strong> / ${r.total}</td>
+      <td><strong>${r.accuracy}%</strong></td>
+      <td>${mm}分${ss}秒</td>
+    </tr>
+  `;
+  }).join("");
+}
+
+document.getElementById("searchResults").addEventListener("input", (ev) => {
+  resultFilter = ev.target.value;
+  renderResults();
+});
+
+document.getElementById("exportResultsBtn").addEventListener("click", () => {
+  const headers = ["completed_at","email","nickname","university","mode","score","total","accuracy","duration_sec"];
+  const rows = [headers].concat(allResults.map(r => headers.map(h => `"${String(r[h] ?? "").replace(/"/g, '""')}"`)));
+  const csv = rows.map(r => r.join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `test_results_${new Date().toISOString().replace(/[:.]/g,"-")}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 });
 
 async function fetchStats() {
