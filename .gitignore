@@ -29,5 +29,9 @@ logs/
 # ScreenRecording (元動画 - バイナリ大容量)
 ScreenRecording_*.mov
 
+# 参考スクリーンショット（開発者ローカル用、コミット不要）
+スクリーンショット*.png
+スクリーンショット*.PNG
+
 # Render local testing
 .render/
