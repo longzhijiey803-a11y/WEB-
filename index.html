@@ -223,13 +223,14 @@
   <source src="correct.mov" type="video/quicktime">
 </video>
 
+<script src="generators.js"></script>
 <script>
 "use strict";
 
 /* ============================================================
-   設定 - APIキーはサーバー側（/api/generate プロキシ経由）
+   設定 - 完全オフライン動作（APIキー不要 / 課金ゼロ）
+   問題は generators.js 内でアルゴリズム生成 / プール抽選
 ============================================================ */
-const API_ENDPOINT = "/api/generate";
 
 /* ============================================================
    モード設定
@@ -600,113 +601,41 @@ state.timeRemaining = getDurationSec();
 const app = document.getElementById("app");
 
 /* ============================================================
-   Gemini API（ストリーミング）
+   ローカル生成（オフライン / 擬似ストリーミング表示）
 ============================================================ */
-async function callGemini(theme, passageIndex, onProgress) {
-  // 最大10回の指数バックオフ + Geminiの retry-after を優先
-  const MAX_ATTEMPTS = 10;
-  let lastErr;
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    try {
-      return await callGeminiOnce(theme, passageIndex, onProgress);
-    } catch (e) {
-      lastErr = e;
-      const msg = String(e.message || "");
-      // 復旧不可能な種類のエラーは即throw
-      if (msg.includes("AUTH_REQUIRED") ||
-          msg.includes("生成された問題の形式") || msg.includes("correct_") ||
-          msg.includes("選択肢") || msg.includes("table_markdown") ||
-          msg.includes("MAX_TOKENS")) break;
+// セッション毎のプール（ja/en はセッション開始時にシャッフルして確保）
+let jaSessionCache = null;
+let enSessionCache = null;
 
-      if (attempt >= MAX_ATTEMPTS - 1) break;
-
-      // RATE_LIMITED / Load Failed / 5xx etc: 待機してリトライ
-      const retryMatch = msg.match(/retry in (\d+(?:\.\d+)?)\s*s/i);
-      let waitMs;
-      if (retryMatch) {
-        // Geminiの指定秒数 + 小バッファ
-        waitMs = Math.ceil(parseFloat(retryMatch[1]) * 1000) + 800;
-      } else {
-        // 指数バックオフ: 1s, 2s, 4s, 8s, 16s, 32s...（上限60s）
-        waitMs = Math.min(60000, 1000 * Math.pow(2, attempt));
-      }
-      await new Promise(r => setTimeout(r, waitMs));
-    }
-  }
-  throw lastErr;
+function prepareSessionPool(modeId, count) {
+  if (modeId === "ja") jaSessionCache = window.Generators.buildJaSession(count);
+  else if (modeId === "en") enSessionCache = window.Generators.buildEnSession(count);
 }
 
-// Vertex AIに移行済みなのでクライアント側の厳しいレート制御は不要（no-op）
-async function rateGate() { /* Vertex AI: 並列許可 */ }
+// 問題を取得し、生成中風の進捗通知を返す（約 2.5〜6 秒）
+async function callGenerator(modeId, idx, onProgress) {
+  let content;
+  if (modeId === "num") content = window.Generators.num(idx);
+  else if (modeId === "ja") content = jaSessionCache[idx];
+  else if (modeId === "en") content = enSessionCache[idx];
+  else throw new Error("unknown mode: " + modeId);
 
-async function callGeminiOnce(theme, passageIndex, onProgress) {
-  const mode = getMode();
-  const body = {
-    systemInstruction: { parts: [{ text: mode.systemPrompt }] },
-    contents: [{ role: "user", parts: [{ text: mode.buildUserMessage(theme, passageIndex) }] }],
-    generationConfig: {
-      temperature: 0.9,
-      maxOutputTokens: 8192,
-      responseMimeType: "application/json",
-      responseSchema: mode.schema
-    }
-  };
-  const headers = { "Content-Type": "application/json" };
-  if (state.accessToken) headers["X-Access-Token"] = state.accessToken;
-  const res = await fetch(API_ENDPOINT, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) {
-    let errMsg = `HTTP ${res.status}`;
-    try { const j = await res.json(); errMsg = j?.error?.message || errMsg; } catch {}
-    if (res.status === 401) throw new Error("AUTH_REQUIRED");
-    if (res.status === 429) throw new Error("RATE_LIMITED: " + errMsg);
-    throw new Error(errMsg);
+  // 擬似ストリーミング: 所要時間をランダム化し、文字数が徐々に増えていく演出
+  const targetLen = JSON.stringify(content).length;
+  const duration = 2500 + Math.random() * 3500;
+  const steps = 28;
+  const stepMs = duration / steps;
+  // 単調増加に変化を与えるため、途中で加速/減速する重み付けを作る
+  const weights = new Array(steps).fill(0).map(() => 0.5 + Math.random());
+  const wSum = weights.reduce((a, b) => a + b, 0);
+  let acc = 0;
+  for (let i = 0; i < steps; i++) {
+    await new Promise(r => setTimeout(r, stepMs));
+    acc += weights[i] / wSum;
+    if (onProgress) onProgress(Math.min(targetLen, Math.round(targetLen * acc)));
   }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let accumulatedText = "";
-  let finishReason = null;
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let nlIdx;
-    while ((nlIdx = buffer.indexOf("\n")) !== -1) {
-      const line = buffer.slice(0, nlIdx).trim();
-      buffer = buffer.slice(nlIdx + 1);
-      if (!line || !line.startsWith("data: ")) continue;
-      const payload = line.slice(6).trim();
-      if (payload === "[DONE]") continue;
-      try {
-        const event = JSON.parse(payload);
-        const candidate = event.candidates?.[0];
-        if (candidate) {
-          const deltaText = candidate.content?.parts?.[0]?.text;
-          if (deltaText) {
-            accumulatedText += deltaText;
-            if (onProgress) onProgress(accumulatedText.length);
-          }
-          if (candidate.finishReason) finishReason = candidate.finishReason;
-        }
-      } catch { /* ignore */ }
-    }
-  }
-
-  if (finishReason === "MAX_TOKENS") throw new Error("出力がトークン上限に達しました");
-  if (finishReason && finishReason !== "STOP") throw new Error("生成中断: " + finishReason);
-  if (!accumulatedText) throw new Error("レスポンスにテキストが含まれていません");
-
-  let parsed;
-  try { parsed = JSON.parse(accumulatedText); }
-  catch (e) { throw new Error("JSONパース失敗: " + e.message); }
-
-  return mode.normalizeResponse(parsed);
+  if (onProgress) onProgress(targetLen);
+  return content;
 }
 
 function ensureGenerationStarted() {
@@ -719,14 +648,13 @@ function ensureGenerationStarted() {
   state.passages = new Array(n).fill(null);
   state.passageErrors = {};
   state.passageProgress = new Array(n).fill(0);
-  const themes = mode.themes.slice();
-  // 不足した場合はテーマをループ
-  // Vertex AI: 全問を並列で生成
+  // ja/en はプール抽選。セッション開始時にシャッフルして重複なしで取り出す
+  prepareSessionPool(mode.id, n);
+  // 全問を並列で「生成中」。数秒の演出後に順次完了
   state.passagePromises = [];
   for (let i = 0; i < n; i++) {
-    const theme = themes[i % themes.length];
     const idx = i;
-    const p = callGemini(theme, idx, chars => {
+    const p = callGenerator(mode.id, idx, chars => {
       if (state.generationId !== myGenId) return;
       state.passageProgress[idx] = chars;
     }).then(
@@ -1616,13 +1544,6 @@ function resetAndSetup() {
 }
 
 /* 起動 */
-// AUTH_REQUIRED のハンドリングは startTest / callGemini 内の例外で処理される
-window.addEventListener("unhandledrejection", e => {
-  if (String(e.reason?.message || "").includes("AUTH_REQUIRED")) {
-    renderAccessPrompt();
-    e.preventDefault();
-  }
-});
 renderSetup();
 </script>
 </body>
