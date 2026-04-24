@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新規登録 — WEBテスト練習</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth-common.js"></script>
+</head>
+<body>
+<div class="container">
+  <h1>新規登録</h1>
+  <p class="muted">玉手箱・C-GAB 形式の練習と、提携企業からのスカウト受信（任意）のため、以下の情報を登録します。</p>
+
+  <div id="msg"></div>
+
+  <div class="panel">
+    <form id="f">
+      <div class="field">
+        <label>メールアドレス（必須）</label>
+        <input type="email" id="email" required autocomplete="email">
+        <div class="hint">ログインIDおよび通知用。</div>
+      </div>
+      <div class="field">
+        <label>パスワード（必須、8文字以上）</label>
+        <input type="password" id="password" required minlength="8" autocomplete="new-password">
+        <div class="hint">Supabase により自動でハッシュ化されて保存されます（管理者もパスワードを知ることはできません）。</div>
+      </div>
+      <div class="field">
+        <label>ニックネーム（必須）</label>
+        <input type="text" id="nickname" required maxlength="60">
+        <div class="hint">匿名性担保のためニックネームでも可。</div>
+      </div>
+      <div class="field">
+        <label>所属大学名(必須)</label>
+        <input type="text" id="university" required maxlength="120">
+      </div>
+      <div class="field">
+        <label>卒業予定年度(必須)</label>
+        <select id="graduation_year" required>
+          <option value="">選択してください</option>
+          <option>2025年卒</option>
+          <option>2026年卒</option>
+          <option>2027年卒</option>
+          <option>2028年卒</option>
+          <option>2029年卒</option>
+          <option>2030年卒</option>
+          <option>既卒 / その他</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>第一志望の業界(任意)</label>
+        <select id="first_choice_industry">
+          <option value="">未回答</option>
+          <option>コンサルティング</option>
+          <option>総合商社</option>
+          <option>金融・銀行</option>
+          <option>証券・投資</option>
+          <option>保険</option>
+          <option>メーカー（電機・機械）</option>
+          <option>メーカー（食品・化学）</option>
+          <option>IT・ソフトウェア</option>
+          <option>通信・インターネット</option>
+          <option>広告・マーケティング</option>
+          <option>マスコミ・出版</option>
+          <option>インフラ（電力・ガス・鉄道）</option>
+          <option>不動産・建設</option>
+          <option>医療・製薬</option>
+          <option>教育</option>
+          <option>公務員</option>
+          <option>その他</option>
+        </select>
+        <div class="hint">ダッシュボードのパーソナライズに利用します（非公開）。</div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+
+      <div class="consent-row">
+        <input type="checkbox" id="consent_terms" required>
+        <label for="consent_terms" style="color:var(--text);font-size:13px;margin:0;cursor:pointer">
+          <a href="/terms" target="_blank" class="link">利用規約</a> および <a href="/privacy" target="_blank" class="link">プライバシーポリシー</a>に同意します（必須）
+        </label>
+      </div>
+      <div class="consent-row">
+        <input type="checkbox" id="consent_scout">
+        <label for="consent_scout" style="color:var(--text);font-size:13px;margin:0;cursor:pointer">
+          スカウト機能を利用し、提携企業に匿名プロフィール（大学名・卒業年度・テスト成績）を公開することに同意します（任意、後から変更可能）
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <button type="submit" id="submitBtn">会員登録してテストを始める</button>
+        <a href="/login" class="link" style="font-size:13px">既にアカウントがある方</a>
+      </div>
+    </form>
+  </div>
+  <p class="muted" style="text-align:center">
+    <a href="/" class="link">← テストページに戻る（未ログインでも利用可）</a>
+  </p>
+</div>
+
+<script>
+"use strict";
+
+const msg = document.getElementById("msg");
+function showMsg(cls, text) { msg.innerHTML = `<div class="${cls}">${text}</div>`; }
+
+document.getElementById("f").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  showMsg("notice", "登録処理中…");
+
+  const payload = {
+    email: document.getElementById("email").value.trim(),
+    password: document.getElementById("password").value,
+    nickname: document.getElementById("nickname").value.trim(),
+    university: document.getElementById("university").value.trim(),
+    graduation_year: document.getElementById("graduation_year").value,
+    first_choice_industry: document.getElementById("first_choice_industry").value || null,
+    consent_terms: document.getElementById("consent_terms").checked,
+    consent_scout: document.getElementById("consent_scout").checked
+  };
+
+  if (!payload.consent_terms) {
+    showMsg("error", "利用規約とプライバシーポリシーへの同意が必須です。");
+    btn.disabled = false;
+    return;
+  }
+
+  try {
+    const client = await window.AuthApp.requireReady();
+
+    // 1. Supabase Auth で新規登録
+    const { data: suData, error: suErr } = await client.auth.signUp({
+      email: payload.email,
+      password: payload.password
+    });
+    if (suErr) throw suErr;
+
+    // 2. セッションが無ければ、サインインを試みる（メール確認がOFFの場合に成功）
+    let session = suData.session;
+    let user = suData.user;
+    if (!session) {
+      const { data: siData, error: siErr } = await client.auth.signInWithPassword({
+        email: payload.email,
+        password: payload.password
+      });
+      if (siErr) {
+        // メール確認が有効な場合。プロフィール情報はローカル保存しておき、確認後のログイン時に登録
+        localStorage.setItem("pending_profile", JSON.stringify(payload));
+        showMsg("ok", "✓ 登録完了。確認メールを送信しました。メール内のリンクをクリックして有効化してください。");
+        btn.disabled = false;
+        return;
+      }
+      session = siData.session;
+      user = siData.user;
+    }
+
+    // 3. profiles に INSERT
+    const { error: profErr } = await client.from("profiles").upsert({
+      id: user.id,
+      nickname: payload.nickname,
+      university: payload.university,
+      graduation_year: payload.graduation_year,
+      first_choice_industry: payload.first_choice_industry
+    });
+    if (profErr) throw profErr;
+
+    // 4. 同意ログ記録
+    const ua = navigator.userAgent.slice(0, 300);
+    const consentRecords = [
+      { user_id: user.id, consent_type: "terms_privacy", agreed: payload.consent_terms, user_agent: ua }
+    ];
+    if (payload.consent_scout !== undefined) {
+      consentRecords.push({ user_id: user.id, consent_type: "scout_disclosure", agreed: payload.consent_scout, user_agent: ua });
+    }
+    await client.from("consent_logs").insert(consentRecords);
+
+    localStorage.removeItem("pending_profile");
+    showMsg("ok", "✓ 登録が完了しました。テストページへ移動します…");
+    setTimeout(() => { location.href = "/"; }, 1200);
+  } catch (e) {
+    showMsg("error", "登録失敗: " + (e.message || e));
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

@@ -218,11 +218,17 @@
 </style>
 </head>
 <body>
+<div id="authBar" style="background:#fff;border-bottom:1px solid var(--border);padding:8px 14px;display:flex;justify-content:flex-end;align-items:center;gap:10px;font-size:13px">
+  <span id="authStatus" style="color:var(--muted)">読み込み中…</span>
+  <span id="authLinks"></span>
+</div>
 <div id="app"></div>
 <video id="correctSound" preload="auto" playsinline style="display:none">
   <source src="correct.mov" type="video/quicktime">
 </video>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth-common.js"></script>
 <script src="generators.js"></script>
 <script>
 "use strict";
@@ -1542,6 +1548,40 @@ function resetAndSetup() {
   state.lastError = null;
   renderSetup();
 }
+
+/* 認証バー表示（非ブロッキング） */
+(async function renderAuthBar() {
+  const statusEl = document.getElementById("authStatus");
+  const linksEl = document.getElementById("authLinks");
+  if (!window.AuthApp) return;
+  await window.AuthApp.ready;
+  if (!window.AuthApp.client) {
+    statusEl.textContent = "未ログイン（認証機能未設定）";
+    linksEl.innerHTML = "";
+    return;
+  }
+  async function refresh() {
+    const u = await window.AuthApp.getUser();
+    if (u) {
+      let name = u.email;
+      try {
+        const { data } = await window.AuthApp.client.from("profiles").select("nickname").eq("id", u.id).single();
+        if (data?.nickname) name = data.nickname;
+      } catch {}
+      statusEl.textContent = `こんにちは、${name}`;
+      linksEl.innerHTML = `<a href="#" id="logoutLink" style="color:var(--accent)">ログアウト</a>`;
+      document.getElementById("logoutLink").addEventListener("click", async (e) => {
+        e.preventDefault();
+        await window.AuthApp.signOut();
+        location.reload();
+      });
+    } else {
+      statusEl.textContent = "未ログイン（テストは利用可能）";
+      linksEl.innerHTML = `<a href="/login" style="color:var(--accent)">ログイン</a>・<a href="/signup" style="color:var(--accent)">新規登録</a>`;
+    }
+  }
+  refresh();
+})();
 
 /* 起動 */
 renderSetup();

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>管理画面</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: #0a0a0a; color: #e5e5e5; line-height: 1.6;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .box {
+    background: #161616; border: 1px solid #2a2a2a; border-radius: 12px;
+    padding: 28px; width: 360px; max-width: 92vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  h1 { margin: 0 0 6px; font-size: 18px; }
+  .muted { color: #888; font-size: 12px; margin-bottom: 18px; }
+  label { display: block; font-size: 12px; color: #aaa; margin-bottom: 6px; }
+  input[type="password"] {
+    width: 100%; padding: 10px 12px; border: 1px solid #333;
+    border-radius: 8px; font-size: 14px; background: #0a0a0a; color: #e5e5e5;
+    font-family: inherit;
+  }
+  input[type="password"]:focus { outline: none; border-color: #3b82f6; }
+  button {
+    width: 100%; margin-top: 14px;
+    background: #1d4ed8; color: white; border: none;
+    padding: 11px; border-radius: 8px; font-size: 14px;
+    cursor: pointer; font-family: inherit;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .error { background: #2a1010; color: #ff6b6b; padding: 9px 12px; border-radius: 8px; font-size: 12px; margin-top: 12px; border: 1px solid #4a1818; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>🔒 管理画面</h1>
+  <div class="muted">許可された管理者以外はアクセスしないでください。</div>
+  <form id="f">
+    <label for="pw">管理パスワード</label>
+    <input type="password" id="pw" autocomplete="current-password" autofocus required>
+    <button type="submit" id="b">ログイン</button>
+  </form>
+  <div id="err" class="error" style="display:none"></div>
+</div>
+<script>
+"use strict";
+const f = document.getElementById("f");
+const btn = document.getElementById("b");
+const errEl = document.getElementById("err");
+f.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  btn.disabled = true;
+  errEl.style.display = "none";
+  const pw = document.getElementById("pw").value;
+  try {
+    const r = await fetch("/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw }),
+      credentials: "same-origin"
+    });
+    if (r.ok) {
+      location.href = "/admin";
+      return;
+    }
+    const j = await r.json().catch(() => ({}));
+    errEl.textContent = r.status === 429
+      ? "試行回数が多すぎます。15分後に再試行してください。"
+      : (j.error === "invalid password" ? "パスワードが違います" : (j.error || "エラーが発生しました"));
+    errEl.style.display = "block";
+  } catch (e) {
+    errEl.textContent = "通信エラー: " + e.message;
+    errEl.style.display = "block";
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

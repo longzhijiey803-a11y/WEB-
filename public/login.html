@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ログイン — WEBテスト練習</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/auth-common.js"></script>
+</head>
+<body>
+<div class="container">
+  <h1>ログイン</h1>
+  <div id="msg"></div>
+  <div class="panel">
+    <form id="f">
+      <div class="field">
+        <label>メールアドレス</label>
+        <input type="email" id="email" required autocomplete="email" autofocus>
+      </div>
+      <div class="field">
+        <label>パスワード</label>
+        <input type="password" id="password" required autocomplete="current-password">
+      </div>
+      <div class="row">
+        <button type="submit" id="submitBtn">ログイン</button>
+        <a href="/signup" class="link" style="font-size:13px">新規登録はこちら</a>
+      </div>
+    </form>
+  </div>
+  <p class="muted" style="text-align:center">
+    <a href="/" class="link">← テストページに戻る（未ログインでも利用可）</a>
+  </p>
+</div>
+<script>
+"use strict";
+const msg = document.getElementById("msg");
+function showMsg(cls, text) { msg.innerHTML = `<div class="${cls}">${text}</div>`; }
+
+document.getElementById("f").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  showMsg("notice", "ログイン中…");
+  try {
+    const client = await window.AuthApp.requireReady();
+    const { data, error } = await client.auth.signInWithPassword({
+      email: document.getElementById("email").value.trim(),
+      password: document.getElementById("password").value
+    });
+    if (error) throw error;
+
+    // メール確認後の初回ログインで、保留中のプロフィールがあれば反映
+    const pending = localStorage.getItem("pending_profile");
+    if (pending) {
+      try {
+        const p = JSON.parse(pending);
+        await client.from("profiles").upsert({
+          id: data.user.id,
+          nickname: p.nickname,
+          university: p.university,
+          graduation_year: p.graduation_year,
+          first_choice_industry: p.first_choice_industry
+        });
+        const ua = navigator.userAgent.slice(0, 300);
+        const consentRecords = [
+          { user_id: data.user.id, consent_type: "terms_privacy", agreed: !!p.consent_terms, user_agent: ua }
+        ];
+        if (p.consent_scout !== undefined) {
+          consentRecords.push({ user_id: data.user.id, consent_type: "scout_disclosure", agreed: !!p.consent_scout, user_agent: ua });
+        }
+        await client.from("consent_logs").insert(consentRecords);
+        localStorage.removeItem("pending_profile");
+      } catch (e) { console.warn("Pending profile sync failed:", e); }
+    }
+
+    showMsg("ok", "✓ ログインしました。移動します…");
+    setTimeout(() => { location.href = "/"; }, 800);
+  } catch (e) {
+    showMsg("error", "ログイン失敗: " + (e.message || e));
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
