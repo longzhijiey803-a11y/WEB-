@@ -1499,7 +1499,38 @@ function finishCurrentSection() {
     language: state.uiMode,
     score: totalScore, total: totalAll, elapsedSec: totalElapsed
   });
+  // Supabase に結果保存（ログイン中のユーザーのみ）
+  saveTestResultsToSupabase(combined, state.uiMode);
   renderResults({ combined });
+}
+
+// 各セクションの結果を Supabase に保存
+async function saveTestResultsToSupabase(sections, uiMode) {
+  try {
+    if (!window.AuthApp) return;
+    await window.AuthApp.ready;
+    if (!window.AuthApp.client) return;
+    const user = await window.AuthApp.getUser();
+    if (!user) return; // 未ログインなら保存しない
+    const rows = sections.map(s => ({
+      user_id: user.id,
+      mode: s.mode,
+      score: s.score,
+      total: s.total,
+      duration_sec: s.elapsedSec
+    }));
+    // チェーン全体の結果も別レコードで保存（uiMode = num_ja 等の統合）
+    if (sections.length > 1) {
+      const tScore = sections.reduce((a, b) => a + b.score, 0);
+      const tTotal = sections.reduce((a, b) => a + b.total, 0);
+      const tDur   = sections.reduce((a, b) => a + b.elapsedSec, 0);
+      rows.push({ user_id: user.id, mode: uiMode, score: tScore, total: tTotal, duration_sec: tDur });
+    }
+    const { error } = await window.AuthApp.client.from("test_results").insert(rows);
+    if (error) console.warn("test_results insert failed:", error);
+  } catch (e) {
+    console.warn("saveTestResultsToSupabase error:", e);
+  }
 }
 
 function finishTest() { finishCurrentSection(); }
