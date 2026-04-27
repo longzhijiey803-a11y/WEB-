@@ -616,7 +616,9 @@
     const tmpl = pick(JA_TEMPLATES);
     const slots = resolveSlots(tmpl.slots);
     const passage = tmpl.passageFn(slots);
-    const questions = tmpl.qa.map(q => ({
+    // JA は固定 ABC 順だが、設問の並び順をシャッフルして A/B/C のパターンを崩す
+    const shuffledQa = shuffle(tmpl.qa);
+    const questions = shuffledQa.map(q => ({
       statement: q.s(slots),
       choices: JA_CHOICES.slice(),
       correct_index: { A: 0, B: 1, C: 2 }[q.a],
@@ -1161,14 +1163,20 @@ Environmental groups welcome the decision and hope other islands in the region w
     const tmpl = pick(EN_TEMPLATES);
     const slots = resolveSlots(tmpl.slots);
     const passage = tmpl.passageFn(slots);
-    const questions = tmpl.qa.map(q => {
-      const choices = q.choices(slots);
-      const correct = typeof q.correct === "function" ? q.correct(slots) : q.correct;
+    // 設問の並び順もシャッフル
+    const shuffledQa = shuffle(tmpl.qa);
+    const questions = shuffledQa.map(q => {
+      const origChoices = q.choices(slots);
+      const correctIdx = typeof q.correct === "function" ? q.correct(slots) : q.correct;
       const explanation = typeof q.e === "function" ? q.e(slots) : q.e;
+      // 選択肢自体もシャッフル（正解位置を毎回ランダムに）
+      const correctText = origChoices[correctIdx];
+      const shuffled = shuffle(origChoices);
+      const newCorrectIdx = shuffled.indexOf(correctText);
       return {
         statement: q.s(slots),
-        choices: choices.slice(),
-        correct_index: correct,
+        choices: shuffled,
+        correct_index: newCorrectIdx,
         explanation
       };
     });

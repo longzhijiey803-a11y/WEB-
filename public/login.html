@@ -28,7 +28,7 @@
     </form>
   </div>
   <p class="muted" style="text-align:center">
-    <a href="/" class="link">← テストページに戻る（未ログインでも利用可）</a>
+    アカウントをお持ちでない方は <a href="/signup" class="link">新規登録</a>
   </p>
 </div>
 <script>
@@ -62,13 +62,9 @@ document.getElementById("f").addEventListener("submit", async (ev) => {
           first_choice_industry: p.first_choice_industry
         });
         const ua = navigator.userAgent.slice(0, 300);
-        const consentRecords = [
+        await client.from("consent_logs").insert([
           { user_id: data.user.id, consent_type: "terms_privacy", agreed: !!p.consent_terms, user_agent: ua }
-        ];
-        if (p.consent_scout !== undefined) {
-          consentRecords.push({ user_id: data.user.id, consent_type: "scout_disclosure", agreed: !!p.consent_scout, user_agent: ua });
-        }
-        await client.from("consent_logs").insert(consentRecords);
+        ]);
         localStorage.removeItem("pending_profile");
       } catch (e) { console.warn("Pending profile sync failed:", e); }
     }

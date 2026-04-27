@@ -77,7 +77,33 @@ function safeEqual(a, b) {
 }
 
 app.set("trust proxy", 1);
+app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
+
+// ---------- セキュリティヘッダ (全レスポンス) ----------
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "geolocation=(), camera=(), microphone=()");
+  // HTTPS 時は HSTS を追加
+  if (req.secure || req.headers["x-forwarded-proto"] === "https") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  // CSP (Supabase と CDN (jsdelivr) を許可)
+  res.setHeader("Content-Security-Policy",
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data:; " +
+    "font-src 'self' data:; " +
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co; " +
+    "frame-ancestors 'none'; " +
+    "base-uri 'self'; " +
+    "form-action 'self'"
+  );
+  next();
+});
 
 // ---------- アクセスログ（統計用 / メモリ保持） ----------
 const ACCESS_LOG_MAX = 20000;
@@ -87,7 +113,13 @@ app.use((req, _res, next) => {
   const p = req.path;
   const isPage = req.method === "GET" && (p === "/" || /\.html?$/.test(p) || p === "/signup" || p === "/login" || p === "/privacy" || p === "/terms");
   if (isPage) {
-    accessLog.push({ ts: Date.now(), ip: getIp(req), path: p });
+    accessLog.push({
+      ts: Date.now(),
+      ip: getIp(req),
+      path: p,
+      ua: (req.headers["user-agent"] || "").slice(0, 300),
+      referer: (req.headers["referer"] || req.headers["referrer"] || "").slice(0, 300)
+    });
     if (accessLog.length > ACCESS_LOG_MAX) accessLog.splice(0, accessLog.length - ACCESS_LOG_MAX);
   }
   next();
@@ -116,8 +148,9 @@ app.post("/admin/login", (req, res) => {
     return setTimeout(() => res.status(401).json({ error: "invalid password" }), 250 + Math.random() * 250);
   }
   const token = newAdminSession();
+  const secure = (req.secure || req.headers["x-forwarded-proto"] === "https") ? "Secure; " : "";
   res.setHeader("Set-Cookie",
-    `admin_session=${token}; HttpOnly; Secure; SameSite=Strict; Path=/admin; Max-Age=${SESSION_TTL_MS / 1000}`
+    `admin_session=${token}; HttpOnly; ${secure}SameSite=Strict; Path=/admin; Max-Age=${SESSION_TTL_MS / 1000}`
   );
   console.log(JSON.stringify({ event: "admin_login_success", ip, t: new Date().toISOString() }));
   res.json({ ok: true });
@@ -126,10 +159,85 @@ app.post("/admin/login", (req, res) => {
 app.post("/admin/logout", (req, res) => {
   const cookies = parseCookies(req.headers.cookie);
   if (cookies.admin_session) adminSessions.delete(cookies.admin_session);
+  const secure = (req.secure || req.headers["x-forwarded-proto"] === "https") ? "Secure; " : "";
   res.setHeader("Set-Cookie",
-    "admin_session=; HttpOnly; Secure; SameSite=Strict; Path=/admin; Max-Age=0"
+    `admin_session=; HttpOnly; ${secure}SameSite=Strict; Path=/admin; Max-Age=0`
   );
   res.json({ ok: true });
+});
+
+// Supabase JWT を検証して、is_admin=true なら admin セッション発行（SSO ログイン）
+app.post("/admin/login-sso", async (req, res) => {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return res.status(503).json({ error: "supabase not configured" });
+  }
+  const ip = getIp(req);
+  if (!recordAndCheck(ip)) {
+    return res.status(429).json({ error: "too many attempts. wait 15 minutes." });
+  }
+  const { access_token } = req.body || {};
+  if (!access_token || typeof access_token !== "string") {
+    return res.status(400).json({ error: "missing access_token" });
+  }
+  try {
+    // JWT 検証: Supabase に問い合わせ
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${access_token}` }
+    });
+    if (!userRes.ok) {
+      console.log(JSON.stringify({ event: "admin_sso_invalid_jwt", ip, t: new Date().toISOString() }));
+      return res.status(401).json({ error: "invalid token" });
+    }
+    const user = await userRes.json();
+    if (!user?.id) return res.status(401).json({ error: "no user" });
+
+    // is_admin チェック（service_role で profiles 読み取り）
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(503).json({ error: "server not configured" });
+    }
+    const profRes = await supabaseFetch(`/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=is_admin,nickname`);
+    if (!profRes.ok) return res.status(500).json({ error: "profile check failed" });
+    const profiles = await profRes.json();
+    if (!profiles[0] || !profiles[0].is_admin) {
+      console.log(JSON.stringify({ event: "admin_sso_denied", ip, user_id: user.id, t: new Date().toISOString() }));
+      return res.status(403).json({ error: "not an admin" });
+    }
+
+    // 管理セッションクッキー発行
+    const token = newAdminSession();
+    const secure = (req.secure || req.headers["x-forwarded-proto"] === "https") ? "Secure; " : "";
+    res.setHeader("Set-Cookie",
+      `admin_session=${token}; HttpOnly; ${secure}SameSite=Strict; Path=/admin; Max-Age=${SESSION_TTL_MS / 1000}`
+    );
+    console.log(JSON.stringify({ event: "admin_sso_success", ip, user_id: user.id, nickname: profiles[0].nickname, t: new Date().toISOString() }));
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+// ログイン中ユーザーが admin かどうかを確認するエンドポイント（フロント用）
+app.get("/api/is-admin", async (req, res) => {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+    return res.json({ isAdmin: false });
+  }
+  const auth = req.headers["authorization"] || "";
+  const m = auth.match(/^Bearer\s+(.+)$/);
+  if (!m) return res.json({ isAdmin: false });
+  try {
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${m[1]}` }
+    });
+    if (!userRes.ok) return res.json({ isAdmin: false });
+    const user = await userRes.json();
+    if (!user?.id) return res.json({ isAdmin: false });
+    const profRes = await supabaseFetch(`/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=is_admin`);
+    if (!profRes.ok) return res.json({ isAdmin: false });
+    const profiles = await profRes.json();
+    res.json({ isAdmin: !!profiles[0]?.is_admin });
+  } catch {
+    res.json({ isAdmin: false });
+  }
 });
 
 function requireAdmin(req, res, next) {
@@ -285,6 +393,129 @@ app.get("/admin/api/results", requireAdmin, async (_req, res) => {
   }
 });
 
+// 単一ユーザー詳細（全データ深掘り）
+app.get("/admin/api/user/:id", requireAdmin, async (req, res) => {
+  if (!requireSupabaseService(res)) return;
+  const id = req.params.id;
+  try {
+    const [userRes, profRes, resultsRes, answersRes, consentRes] = await Promise.all([
+      supabaseFetch(`/auth/v1/admin/users/${encodeURIComponent(id)}`),
+      supabaseFetch(`/rest/v1/profiles?id=eq.${encodeURIComponent(id)}&select=*`),
+      supabaseFetch(`/rest/v1/test_results?user_id=eq.${encodeURIComponent(id)}&select=*&order=completed_at.desc`),
+      supabaseFetch(`/rest/v1/test_answers?user_id=eq.${encodeURIComponent(id)}&select=*&order=answered_at.desc&limit=2000`),
+      supabaseFetch(`/rest/v1/consent_logs?user_id=eq.${encodeURIComponent(id)}&select=*&order=agreed_at.desc`)
+    ]);
+    const user = userRes.ok ? await userRes.json() : null;
+    const profile = profRes.ok ? (await profRes.json())[0] || null : null;
+    const results = resultsRes.ok ? await resultsRes.json() : [];
+    const answers = answersRes.ok ? await answersRes.json() : [];
+    const consents = consentRes.ok ? await consentRes.json() : [];
+
+    // モード別パフォーマンス
+    const perMode = {};
+    for (const r of results) {
+      if (!perMode[r.mode]) perMode[r.mode] = { attempts: 0, totalScore: 0, totalQs: 0, totalDurationSec: 0 };
+      perMode[r.mode].attempts++;
+      perMode[r.mode].totalScore += r.score || 0;
+      perMode[r.mode].totalQs += r.total || 0;
+      perMode[r.mode].totalDurationSec += r.duration_sec || 0;
+    }
+    const modeSummary = Object.entries(perMode).map(([m, s]) => ({
+      mode: m, attempts: s.attempts,
+      avgAccuracy: s.totalQs > 0 ? Math.round((s.totalScore / s.totalQs) * 1000) / 10 : 0,
+      avgDurationSec: s.attempts > 0 ? Math.round(s.totalDurationSec / s.attempts) : 0
+    }));
+
+    res.json({ user, profile, results, answers, consents, modeSummary });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+// デバイス内訳 (User-Agent を簡易パース)
+app.get("/admin/api/devices", requireAdmin, async (_req, res) => {
+  if (!requireSupabaseService(res)) return;
+  try {
+    // consent_logs と accessLog 両方から UA を集める
+    const consentRes = await supabaseFetch(`/rest/v1/consent_logs?select=user_agent&limit=1000`);
+    const consentUAs = consentRes.ok ? (await consentRes.json()).map(x => x.user_agent).filter(Boolean) : [];
+    const allUAs = consentUAs.concat(accessLog.map(e => e.ua).filter(Boolean));
+
+    const buckets = { device: {}, os: {}, browser: {} };
+    for (const ua of allUAs) {
+      const d = parseUA(ua);
+      buckets.device[d.device] = (buckets.device[d.device] || 0) + 1;
+      buckets.os[d.os] = (buckets.os[d.os] || 0) + 1;
+      buckets.browser[d.browser] = (buckets.browser[d.browser] || 0) + 1;
+    }
+    // referrer 集計
+    const refs = {};
+    for (const e of accessLog) {
+      if (!e.referer) continue;
+      try {
+        const host = new URL(e.referer).hostname || "(不明)";
+        refs[host] = (refs[host] || 0) + 1;
+      } catch { refs["(不明)"] = (refs["(不明)"] || 0) + 1; }
+    }
+    res.json({
+      total: allUAs.length,
+      device: buckets.device, os: buckets.os, browser: buckets.browser,
+      referrers: refs
+    });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+// UA 簡易パーサ
+function parseUA(ua) {
+  const s = ua || "";
+  let device = "デスクトップ", os = "不明", browser = "不明";
+  if (/iPhone|iPod/.test(s)) { device = "モバイル"; os = "iOS"; }
+  else if (/iPad/.test(s)) { device = "タブレット"; os = "iPadOS"; }
+  else if (/Android/.test(s)) {
+    device = /Mobile/.test(s) ? "モバイル" : "タブレット";
+    os = "Android";
+  }
+  else if (/Windows/.test(s)) os = "Windows";
+  else if (/Macintosh|Mac OS X/.test(s)) os = "macOS";
+  else if (/Linux/.test(s)) os = "Linux";
+
+  if (/Edg\//.test(s)) browser = "Edge";
+  else if (/OPR\//.test(s)) browser = "Opera";
+  else if (/Chrome\//.test(s) && !/Edg\//.test(s)) browser = "Chrome";
+  else if (/Safari\//.test(s) && !/Chrome\//.test(s)) browser = "Safari";
+  else if (/Firefox\//.test(s)) browser = "Firefox";
+
+  return { device, os, browser };
+}
+
+// 問題別統計（どの問題の正答率が低いか）
+app.get("/admin/api/question-stats", requireAdmin, async (_req, res) => {
+  if (!requireSupabaseService(res)) return;
+  try {
+    const r = await supabaseFetch(`/rest/v1/test_answers?select=mode,section_index,question_index,is_correct,time_spent_sec&limit=5000`);
+    if (!r.ok) return res.status(500).json({ error: "answers fetch failed" });
+    const answers = await r.json();
+    const groups = {};
+    for (const a of answers) {
+      const key = `${a.mode}|${a.section_index}|${a.question_index}`;
+      if (!groups[key]) groups[key] = { mode: a.mode, section_index: a.section_index, question_index: a.question_index, correct: 0, total: 0, totalTime: 0 };
+      groups[key].total++;
+      if (a.is_correct) groups[key].correct++;
+      if (a.time_spent_sec) groups[key].totalTime += a.time_spent_sec;
+    }
+    const questions = Object.values(groups).map(g => ({
+      ...g,
+      accuracy: g.total > 0 ? Math.round((g.correct / g.total) * 1000) / 10 : 0,
+      avgTimeSec: g.total > 0 ? Math.round(g.totalTime / g.total) : 0
+    })).sort((a, b) => a.accuracy - b.accuracy);
+    res.json({ questions, total: questions.length });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
 // 統計（アクセス数・アクティブユーザー）
 app.get("/admin/api/stats", requireAdmin, async (_req, res) => {
   const now = Date.now();
@@ -353,6 +584,7 @@ app.get("/api/config", (_req, res) => {
 
 // ---------- 静的配信（public のみ。admin.html は private/ にあるため露出しない） ----------
 app.use(express.static(path.join(__dirname, "public"), {
+  extensions: ["html"],
   setHeaders(res, filePath) {
     if (filePath.endsWith(".html")) {
       res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");

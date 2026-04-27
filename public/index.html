@@ -218,10 +218,25 @@
 </style>
 </head>
 <body>
-<div id="authBar" style="background:#fff;border-bottom:1px solid var(--border);padding:8px 14px;display:flex;justify-content:flex-end;align-items:center;gap:10px;font-size:13px">
-  <span id="authStatus" style="color:var(--muted)">読み込み中…</span>
-  <span id="authLinks"></span>
+<div id="authBar" style="background:#fff;border-bottom:1px solid var(--border);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 1px 4px rgba(0,0,0,0.04);position:sticky;top:0;z-index:20">
+  <div style="display:flex;align-items:center;gap:8px">
+    <strong style="font-size:15px;color:var(--text)">📘 WEBテスト練習</strong>
+    <span id="authStatus" style="color:var(--muted);font-size:13px"></span>
+  </div>
+  <div id="authLinks" style="display:flex;gap:8px;align-items:center"></div>
 </div>
+<style>
+  @media (max-width: 640px) {
+    #authBar { padding: 10px 12px; }
+    #authBar strong { font-size: 14px; }
+    #authBar #authStatus { display: none; }
+    #authBar .auth-btn { padding: 8px 14px; font-size: 13px; }
+  }
+  .auth-btn { display: inline-block; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text); font-family: inherit; min-height: 38px; line-height: 1.2; }
+  .auth-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .auth-btn.primary:hover { background: var(--accent-hover); }
+  .auth-btn:not(.primary):hover { background: #f5f5f7; }
+</style>
 <div id="app"></div>
 <video id="correctSound" preload="auto" playsinline style="display:none">
   <source src="correct.mov" type="video/quicktime">
@@ -1123,7 +1138,7 @@ function renderLoading() {
   render(`
     <h1>問題を準備中...</h1>
     <div class="panel">
-      <p class="muted">Gemini APIで ${total} ${label}をストリーミング並列生成中。</p>
+      <p class="muted">問題を準備しています...</p>
       <div class="progress-bar" style="margin:16px 0"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
       <p style="text-align:center;font-size:14px;font-weight:600">${done} / ${total} ${label}完了</p>
       <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
@@ -1247,11 +1262,22 @@ function renderTest() {
     </div>
   `);
 
+  // 問題表示時刻を記録（回答時の所要時間計算用）
+  if (state.answers[state.currentIdx] === undefined) {
+    if (!state.questionStartTs || state._lastRenderedIdx !== state.currentIdx) {
+      state.questionStartTs = Date.now();
+      state._lastRenderedIdx = state.currentIdx;
+    }
+  }
+
   document.querySelectorAll(".choice-row").forEach(row => {
     row.addEventListener("click", () => {
       if (state.answers[state.currentIdx] !== undefined) return;
       const idx = parseInt(row.dataset.idx, 10);
       state.answers[state.currentIdx] = idx;
+      if (state.questionStartTs) {
+        state.answerTimes[state.currentIdx] = Math.max(1, Math.round((Date.now() - state.questionStartTs) / 1000));
+      }
       if (idx === question.correct_index) playCorrectSound();
       renderTest();
     });
@@ -1393,6 +1419,12 @@ async function startTest() {
   ensureGenerationStarted();
 
   state.answers = {};
+  state.answerTimes = {};      // globalIdx -> time_spent_sec
+  state.questionStartTs = null;
+  if (!state.sessionId) {
+    // chain 全体で 1 セッション ID
+    state.sessionId = (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + "-" + Math.random().toString(16).slice(2));
+  }
   state.currentIdx = 0;
   state.timeRemaining = getDurationSec();
 
@@ -1501,33 +1533,163 @@ function finishCurrentSection() {
   });
   // Supabase に結果保存（ログイン中のユーザーのみ）
   saveTestResultsToSupabase(combined, state.uiMode);
-  renderResults({ combined });
+  // アンケートゲート: 結果表示前にアンケート必須
+  state._pendingResults = { combined };
+  renderSurvey();
 }
 
-// 各セクションの結果を Supabase に保存
+function renderSurvey() {
+  render(`
+    <h1>📝 アンケート（必須）</h1>
+    <p class="muted">結果を確認する前に、サービス改善のための簡単なアンケートにご協力ください。</p>
+    <div id="surveyError"></div>
+    <div class="panel">
+      <div class="field">
+        <label>① 全体の満足度（必須）</label>
+        <div class="row" style="gap:6px" id="ratingRow">
+          ${[1,2,3,4,5].map(n => `<button type="button" class="secondary survey-rate" data-name="rating" data-val="${n}" style="flex:1;min-width:48px">${n}</button>`).join("")}
+        </div>
+        <div class="hint">1=不満 / 5=非常に満足</div>
+      </div>
+      <div class="field">
+        <label>② 問題の難易度（必須）</label>
+        <div class="row" style="gap:6px">
+          ${[1,2,3,4,5].map(n => `<button type="button" class="secondary survey-rate" data-name="difficulty" data-val="${n}" style="flex:1;min-width:48px">${n}</button>`).join("")}
+        </div>
+        <div class="hint">1=易しすぎ / 5=難しすぎ</div>
+      </div>
+      <div class="field">
+        <label>③ 就活対策に役立った度合い（必須）</label>
+        <div class="row" style="gap:6px">
+          ${[1,2,3,4,5].map(n => `<button type="button" class="secondary survey-rate" data-name="usefulness" data-val="${n}" style="flex:1;min-width:48px">${n}</button>`).join("")}
+        </div>
+        <div class="hint">1=役立たず / 5=非常に役立った</div>
+      </div>
+      <div class="field">
+        <label>④ 今後も継続して使いたいですか？（必須）</label>
+        <div class="row" style="gap:6px">
+          <button type="button" class="secondary survey-rate" data-name="will_continue" data-val="true" style="flex:1">はい</button>
+          <button type="button" class="secondary survey-rate" data-name="will_continue" data-val="false" style="flex:1">いいえ</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>⑤ ご意見・ご要望（任意）</label>
+        <textarea id="surveyComments" rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px"></textarea>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="surveySubmit" class="start-btn-big" style="font-size:15px;padding:12px 28px">回答して結果を見る</button>
+      </div>
+    </div>
+  `);
+
+  const survey = { rating: null, difficulty: null, usefulness: null, will_continue: null };
+  document.querySelectorAll(".survey-rate").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const name = btn.dataset.name;
+      const val = btn.dataset.val;
+      survey[name] = (val === "true") ? true : (val === "false") ? false : Number(val);
+      // 同じグループの他ボタンを未選択スタイルに
+      document.querySelectorAll(`.survey-rate[data-name="${name}"]`).forEach(b => {
+        b.style.background = "";
+        b.style.color = "";
+        b.style.borderColor = "";
+      });
+      btn.style.background = "var(--accent)";
+      btn.style.color = "#fff";
+      btn.style.borderColor = "var(--accent)";
+    });
+  });
+
+  document.getElementById("surveySubmit").addEventListener("click", async () => {
+    const errEl = document.getElementById("surveyError");
+    if (survey.rating === null || survey.difficulty === null || survey.usefulness === null || survey.will_continue === null) {
+      errEl.innerHTML = '<div class="error">①〜④はすべて必須です。</div>';
+      window.scrollTo(0, 0);
+      return;
+    }
+    survey.comments = document.getElementById("surveyComments").value.trim() || null;
+
+    // Supabase に保存（ログイン中ユーザーのみ）
+    try {
+      if (window.AuthApp) {
+        await window.AuthApp.ready;
+        if (window.AuthApp.client) {
+          const u = await window.AuthApp.getUser();
+          if (u) {
+            await window.AuthApp.client.from("surveys").insert([{
+              user_id: u.id,
+              session_id: state.sessionId || null,
+              rating: survey.rating,
+              difficulty: survey.difficulty,
+              usefulness: survey.usefulness,
+              will_continue: survey.will_continue,
+              comments: survey.comments
+            }]);
+          }
+        }
+      }
+    } catch (e) { console.warn("survey insert failed:", e); }
+
+    const pending = state._pendingResults;
+    state._pendingResults = null;
+    renderResults(pending);
+  });
+}
+
+// 各セクションの結果 + 全回答詳細を Supabase に保存
 async function saveTestResultsToSupabase(sections, uiMode) {
   try {
     if (!window.AuthApp) return;
     await window.AuthApp.ready;
     if (!window.AuthApp.client) return;
     const user = await window.AuthApp.getUser();
-    if (!user) return; // 未ログインなら保存しない
-    const rows = sections.map(s => ({
-      user_id: user.id,
-      mode: s.mode,
-      score: s.score,
-      total: s.total,
-      duration_sec: s.elapsedSec
+    if (!user) return;
+    const sessionId = state.sessionId || ((crypto && crypto.randomUUID) ? crypto.randomUUID() : null);
+    const ua = navigator.userAgent.slice(0, 300);
+    const ref = (document.referrer || "").slice(0, 300);
+
+    // test_results 本体
+    const results = sections.map(s => ({
+      user_id: user.id, mode: s.mode, score: s.score, total: s.total,
+      duration_sec: s.elapsedSec, session_id: sessionId, user_agent: ua, referrer: ref
     }));
-    // チェーン全体の結果も別レコードで保存（uiMode = num_ja 等の統合）
     if (sections.length > 1) {
       const tScore = sections.reduce((a, b) => a + b.score, 0);
       const tTotal = sections.reduce((a, b) => a + b.total, 0);
       const tDur   = sections.reduce((a, b) => a + b.elapsedSec, 0);
-      rows.push({ user_id: user.id, mode: uiMode, score: tScore, total: tTotal, duration_sec: tDur });
+      results.push({ user_id: user.id, mode: uiMode, score: tScore, total: tTotal, duration_sec: tDur, session_id: sessionId, user_agent: ua, referrer: ref });
     }
-    const { error } = await window.AuthApp.client.from("test_results").insert(rows);
-    if (error) console.warn("test_results insert failed:", error);
+    const { error: rErr } = await window.AuthApp.client.from("test_results").insert(results);
+    if (rErr) console.warn("test_results insert failed:", rErr);
+
+    // 問題単位の回答ログ
+    const qsPerPassageMap = { ja: 4, en: 3, num: 1 };
+    const answerRows = [];
+    for (const s of sections) {
+      const qpp = qsPerPassageMap[s.mode] || 1;
+      for (const d of s.detail || []) {
+        if (d.correctIdx < 0) continue; // 生成失敗
+        const ti = state.answerTimes || {};
+        answerRows.push({
+          user_id: user.id,
+          session_id: sessionId,
+          mode: s.mode,
+          section_index: d.passageIdx,
+          question_index: (typeof d.globalIdx === "number" && qpp) ? (d.globalIdx % qpp) : 0,
+          global_index: d.globalIdx,
+          selected_index: (d.userIdx === null || d.userIdx === undefined) ? null : d.userIdx,
+          correct_index: d.correctIdx,
+          is_correct: !!d.isCorrect,
+          time_spent_sec: ti[d.globalIdx] || null
+        });
+      }
+    }
+    if (answerRows.length > 0) {
+      const { error: aErr } = await window.AuthApp.client.from("test_answers").insert(answerRows);
+      if (aErr) console.warn("test_answers insert failed:", aErr);
+    }
+    // セッション ID リセット（次回の受験で新しいセッション ID）
+    state.sessionId = null;
   } catch (e) {
     console.warn("saveTestResultsToSupabase error:", e);
   }
@@ -1595,27 +1757,67 @@ function resetAndSetup() {
     const u = await window.AuthApp.getUser();
     if (u) {
       let name = u.email;
+      let isAdmin = false;
       try {
-        const { data } = await window.AuthApp.client.from("profiles").select("nickname").eq("id", u.id).single();
+        const { data } = await window.AuthApp.client.from("profiles").select("nickname,is_admin").eq("id", u.id).single();
         if (data?.nickname) name = data.nickname;
+        isAdmin = !!data?.is_admin;
       } catch {}
-      statusEl.textContent = `こんにちは、${name}`;
-      linksEl.innerHTML = `<a href="#" id="logoutLink" style="color:var(--accent)">ログアウト</a>`;
+      const adminBadge = isAdmin ? `<span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:0.5px;margin-left:6px">ADMIN</span>` : "";
+      statusEl.innerHTML = `こんにちは、${escapeHtml(name)} さん${adminBadge}`;
+      const adminBtn = isAdmin ? `<button class="auth-btn primary" id="adminBtn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-color:transparent">管理画面へ</button>` : "";
+      linksEl.innerHTML = `${adminBtn}<button class="auth-btn" id="logoutLink">ログアウト</button>`;
       document.getElementById("logoutLink").addEventListener("click", async (e) => {
         e.preventDefault();
         await window.AuthApp.signOut();
         location.reload();
       });
+      if (isAdmin) {
+        document.getElementById("adminBtn").addEventListener("click", async (e) => {
+          e.preventDefault();
+          try {
+            const { data: sess } = await window.AuthApp.client.auth.getSession();
+            const token = sess?.session?.access_token;
+            if (!token) { alert("セッションが無効です。再ログインしてください。"); return; }
+            const r = await fetch("/admin/login-sso", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ access_token: token }),
+              credentials: "same-origin"
+            });
+            if (r.ok) { location.href = "/admin"; return; }
+            const j = await r.json().catch(() => ({}));
+            alert("管理画面アクセス失敗: " + (j.error || r.status));
+          } catch (err) {
+            alert("エラー: " + err.message);
+          }
+        });
+      }
     } else {
-      statusEl.textContent = "未ログイン（テストは利用可能）";
-      linksEl.innerHTML = `<a href="/login" style="color:var(--accent)">ログイン</a>・<a href="/signup" style="color:var(--accent)">新規登録</a>`;
+      statusEl.textContent = "（未ログイン）";
+      linksEl.innerHTML = `<a href="/login" class="auth-btn">ログイン</a><a href="/signup" class="auth-btn primary">新規登録</a>`;
     }
   }
   refresh();
 })();
 
-/* 起動 */
-renderSetup();
+/* 起動: 認証必須ガード */
+(async function bootstrap() {
+  // Supabase クライアント初期化を待つ
+  if (window.AuthApp) {
+    await window.AuthApp.ready;
+    // 認証が利用可能ならログイン状態をチェック
+    if (window.AuthApp.client) {
+      const u = await window.AuthApp.getUser();
+      if (!u) {
+        // 未ログインならログインページへリダイレクト
+        location.href = "/login";
+        return;
+      }
+    }
+  }
+  renderSetup();
+})();
 </script>
 </body>
 </html>
