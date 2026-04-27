@@ -10,7 +10,7 @@
 <body>
 <div class="container">
   <h1>新規登録</h1>
-  <p class="muted">玉手箱・C-GAB 形式の練習と、提携企業からのスカウト受信（任意）のため、以下の情報を登録します。</p>
+  <p class="muted">WEBテスト練習のアカウントを作成します。成績をマイページに保存し、継続して学習できます。</p>
 
   <div id="msg"></div>
 
@@ -32,8 +32,121 @@
         <div class="hint">匿名性担保のためニックネームでも可。</div>
       </div>
       <div class="field">
-        <label>所属大学名(必須)</label>
-        <input type="text" id="university" required maxlength="120">
+        <label>所属大学名（必須）</label>
+        <select id="university_select" required>
+          <option value="">選択してください</option>
+          <optgroup label="国立大学">
+            <option>東京大学</option>
+            <option>京都大学</option>
+            <option>大阪大学</option>
+            <option>東北大学</option>
+            <option>名古屋大学</option>
+            <option>北海道大学</option>
+            <option>九州大学</option>
+            <option>一橋大学</option>
+            <option>東京科学大学</option>
+            <option>筑波大学</option>
+            <option>千葉大学</option>
+            <option>横浜国立大学</option>
+            <option>神戸大学</option>
+            <option>広島大学</option>
+            <option>岡山大学</option>
+            <option>金沢大学</option>
+            <option>新潟大学</option>
+            <option>東京外国語大学</option>
+            <option>東京学芸大学</option>
+            <option>お茶の水女子大学</option>
+            <option>奈良女子大学</option>
+            <option>電気通信大学</option>
+            <option>東京農工大学</option>
+            <option>熊本大学</option>
+            <option>長崎大学</option>
+            <option>信州大学</option>
+            <option>静岡大学</option>
+            <option>岐阜大学</option>
+            <option>三重大学</option>
+            <option>滋賀大学</option>
+            <option>京都工芸繊維大学</option>
+            <option>和歌山大学</option>
+            <option>山口大学</option>
+            <option>徳島大学</option>
+            <option>愛媛大学</option>
+            <option>香川大学</option>
+            <option>鹿児島大学</option>
+            <option>琉球大学</option>
+          </optgroup>
+          <optgroup label="公立大学">
+            <option>大阪公立大学</option>
+            <option>東京都立大学</option>
+            <option>横浜市立大学</option>
+            <option>名古屋市立大学</option>
+            <option>京都府立大学</option>
+            <option>兵庫県立大学</option>
+            <option>国際教養大学</option>
+            <option>会津大学</option>
+          </optgroup>
+          <optgroup label="私立大学（関東）">
+            <option>早稲田大学</option>
+            <option>慶應義塾大学</option>
+            <option>上智大学</option>
+            <option>東京理科大学</option>
+            <option>国際基督教大学(ICU)</option>
+            <option>明治大学</option>
+            <option>青山学院大学</option>
+            <option>立教大学</option>
+            <option>中央大学</option>
+            <option>法政大学</option>
+            <option>学習院大学</option>
+            <option>成蹊大学</option>
+            <option>成城大学</option>
+            <option>明治学院大学</option>
+            <option>武蔵大学</option>
+            <option>國學院大學</option>
+            <option>芝浦工業大学</option>
+            <option>東京都市大学</option>
+            <option>東京電機大学</option>
+            <option>日本大学</option>
+            <option>東洋大学</option>
+            <option>駒澤大学</option>
+            <option>専修大学</option>
+            <option>津田塾大学</option>
+            <option>東京女子大学</option>
+            <option>日本女子大学</option>
+            <option>獨協大学</option>
+            <option>神奈川大学</option>
+            <option>東海大学</option>
+            <option>亜細亜大学</option>
+            <option>帝京大学</option>
+          </optgroup>
+          <optgroup label="私立大学(関西)">
+            <option>同志社大学</option>
+            <option>関西学院大学</option>
+            <option>立命館大学</option>
+            <option>関西大学</option>
+            <option>近畿大学</option>
+            <option>甲南大学</option>
+            <option>京都産業大学</option>
+            <option>龍谷大学</option>
+            <option>関西外国語大学</option>
+            <option>京都女子大学</option>
+            <option>同志社女子大学</option>
+            <option>神戸女学院大学</option>
+          </optgroup>
+          <optgroup label="私立大学（その他）">
+            <option>南山大学</option>
+            <option>名城大学</option>
+            <option>中京大学</option>
+            <option>愛知大学</option>
+            <option>愛知淑徳大学</option>
+            <option>福岡大学</option>
+            <option>西南学院大学</option>
+            <option>東北学院大学</option>
+            <option>北海学園大学</option>
+            <option>立命館アジア太平洋大学(APU)</option>
+          </optgroup>
+          <option value="__other__">その他（自由入力）</option>
+        </select>
+        <input type="text" id="university_other" maxlength="120" placeholder="大学名を入力してください" style="margin-top:8px;display:none">
       </div>
       <div class="field">
         <label>卒業予定年度(必須)</label>
@@ -77,14 +190,8 @@
 
       <div class="consent-row">
         <input type="checkbox" id="consent_terms" required>
-        <label for="consent_terms" style="color:var(--text);font-size:13px;margin:0;cursor:pointer">
-          <a href="/terms" target="_blank" class="link">利用規約</a> および <a href="/privacy" target="_blank" class="link">プライバシーポリシー</a>に同意します（必須）
-        </label>
-      </div>
-      <div class="consent-row">
-        <input type="checkbox" id="consent_scout">
-        <label for="consent_scout" style="color:var(--text);font-size:13px;margin:0;cursor:pointer">
-          スカウト機能を利用し、提携企業に匿名プロフィール（大学名・卒業年度・テスト成績）を公開することに同意します（任意、後から変更可能）
+        <label for="consent_terms" style="color:var(--text);font-size:14px;margin:0;cursor:pointer">
+          <a href="/terms" target="_blank" class="link">利用規約</a>・<a href="/privacy" target="_blank" class="link">プライバシーポリシー</a>に同意します（必須）
         </label>
       </div>
 
@@ -95,7 +202,7 @@
     </form>
   </div>
   <p class="muted" style="text-align:center">
-    <a href="/" class="link">← テストページに戻る（未ログインでも利用可）</a>
+    既にアカウントをお持ちの方は <a href="/login" class="link">ログイン</a>
   </p>
 </div>
 
@@ -105,22 +212,46 @@
 const msg = document.getElementById("msg");
 function showMsg(cls, text) { msg.innerHTML = `<div class="${cls}">${text}</div>`; }
 
+// 大学プルダウン → 「その他」選択時に自由入力欄を出す
+document.getElementById("university_select").addEventListener("change", (ev) => {
+  const other = document.getElementById("university_other");
+  if (ev.target.value === "__other__") {
+    other.style.display = "";
+    other.required = true;
+    other.focus();
+  } else {
+    other.style.display = "none";
+    other.required = false;
+    other.value = "";
+  }
+});
+
 document.getElementById("f").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const btn = document.getElementById("submitBtn");
   btn.disabled = true;
   showMsg("notice", "登録処理中…");
 
+  // 大学名: select or その他の自由入力
+  const uniSel = document.getElementById("university_select").value;
+  const uniOther = document.getElementById("university_other").value.trim();
+  const university = uniSel === "__other__" ? uniOther : uniSel;
+
   const payload = {
     email: document.getElementById("email").value.trim(),
     password: document.getElementById("password").value,
     nickname: document.getElementById("nickname").value.trim(),
-    university: document.getElementById("university").value.trim(),
+    university,
     graduation_year: document.getElementById("graduation_year").value,
     first_choice_industry: document.getElementById("first_choice_industry").value || null,
-    consent_terms: document.getElementById("consent_terms").checked,
-    consent_scout: document.getElementById("consent_scout").checked
+    consent_terms: document.getElementById("consent_terms").checked
   };
+
+  if (!university) {
+    showMsg("error", "所属大学名を選択または入力してください。");
+    btn.disabled = false;
+    return;
+  }
 
   if (!payload.consent_terms) {
     showMsg("error", "利用規約とプライバシーポリシーへの同意が必須です。");
@@ -169,13 +300,9 @@ document.getElementById("f").addEventListener("submit", async (ev) => {
 
     // 4. 同意ログ記録
     const ua = navigator.userAgent.slice(0, 300);
-    const consentRecords = [
+    await client.from("consent_logs").insert([
       { user_id: user.id, consent_type: "terms_privacy", agreed: payload.consent_terms, user_agent: ua }
-    ];
-    if (payload.consent_scout !== undefined) {
-      consentRecords.push({ user_id: user.id, consent_type: "scout_disclosure", agreed: payload.consent_scout, user_agent: ua });
-    }
-    await client.from("consent_logs").insert(consentRecords);
+    ]);
 
     localStorage.removeItem("pending_profile");
     showMsg("ok", "✓ 登録が完了しました。テストページへ移動します…");
