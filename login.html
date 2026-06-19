@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ログイン — WEBテスト練習</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/auth-common.js"></script>
 </head>
 <body>
@@ -42,33 +41,10 @@ document.getElementById("f").addEventListener("submit", async (ev) => {
   btn.disabled = true;
   showMsg("notice", "ログイン中…");
   try {
-    const client = await window.AuthApp.requireReady();
-    const { data, error } = await client.auth.signInWithPassword({
-      email: document.getElementById("email").value.trim(),
-      password: document.getElementById("password").value
-    });
-    if (error) throw error;
-
-    // メール確認後の初回ログインで、保留中のプロフィールがあれば反映
-    const pending = localStorage.getItem("pending_profile");
-    if (pending) {
-      try {
-        const p = JSON.parse(pending);
-        await client.from("profiles").upsert({
-          id: data.user.id,
-          nickname: p.nickname,
-          university: p.university,
-          graduation_year: p.graduation_year,
-          first_choice_industry: p.first_choice_industry
-        });
-        const ua = navigator.userAgent.slice(0, 300);
-        await client.from("consent_logs").insert([
-          { user_id: data.user.id, consent_type: "terms_privacy", agreed: !!p.consent_terms, user_agent: ua }
-        ]);
-        localStorage.removeItem("pending_profile");
-      } catch (e) { console.warn("Pending profile sync failed:", e); }
-    }
-
+    await window.AuthApp.signIn(
+      document.getElementById("email").value.trim(),
+      document.getElementById("password").value
+    );
     showMsg("ok", "✓ ログインしました。移動します…");
     setTimeout(() => { location.href = "/"; }, 800);
   } catch (e) {

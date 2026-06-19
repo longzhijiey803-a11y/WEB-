@@ -242,7 +242,6 @@
   <source src="correct.mov" type="video/quicktime">
 </video>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/auth-common.js"></script>
 <script src="generators.js"></script>
 <script>
@@ -1531,8 +1530,7 @@ function finishCurrentSection() {
     language: state.uiMode,
     score: totalScore, total: totalAll, elapsedSec: totalElapsed
   });
-  // Supabase に結果保存（ログイン中のユーザーのみ）
-  saveTestResultsToSupabase(combined, state.uiMode);
+  saveTestResultsOffline(combined, state.uiMode);
   // アンケートゲート: 結果表示前にアンケート必須
   state._pendingResults = { combined };
   renderSurvey();
@@ -1609,26 +1607,15 @@ function renderSurvey() {
     }
     survey.comments = document.getElementById("surveyComments").value.trim() || null;
 
-    // Supabase に保存（ログイン中ユーザーのみ）
-    try {
-      if (window.AuthApp) {
-        await window.AuthApp.ready;
-        if (window.AuthApp.client) {
-          const u = await window.AuthApp.getUser();
-          if (u) {
-            await window.AuthApp.client.from("surveys").insert([{
-              user_id: u.id,
-              session_id: state.sessionId || null,
-              rating: survey.rating,
-              difficulty: survey.difficulty,
-              usefulness: survey.usefulness,
-              will_continue: survey.will_continue,
-              comments: survey.comments
-            }]);
-          }
-        }
-      }
-    } catch (e) { console.warn("survey insert failed:", e); }
+    window.AuthApp?.saveSurvey?.({
+      user_id: (await window.AuthApp?.getUser?.())?.id || null,
+      session_id: state.sessionId || null,
+      rating: survey.rating,
+      difficulty: survey.difficulty,
+      usefulness: survey.usefulness,
+      will_continue: survey.will_continue,
+      comments: survey.comments
+    });
 
     const pending = state._pendingResults;
     state._pendingResults = null;
@@ -1636,63 +1623,46 @@ function renderSurvey() {
   });
 }
 
-// 各セクションの結果 + 全回答詳細を Supabase に保存
-async function saveTestResultsToSupabase(sections, uiMode) {
-  try {
-    if (!window.AuthApp) return;
-    await window.AuthApp.ready;
-    if (!window.AuthApp.client) return;
-    const user = await window.AuthApp.getUser();
-    if (!user) return;
-    const sessionId = state.sessionId || ((crypto && crypto.randomUUID) ? crypto.randomUUID() : null);
-    const ua = navigator.userAgent.slice(0, 300);
-    const ref = (document.referrer || "").slice(0, 300);
+// 各セクションの結果 + 全回答詳細をこのブラウザ内に保存
+async function saveTestResultsOffline(sections, uiMode) {
+  const user = await window.AuthApp?.getUser?.();
+  const sessionId = state.sessionId || crypto?.randomUUID?.() || `local_${Date.now()}`;
+  const qsPerPassageMap = { ja: 4, en: 3, num: 1 };
+  const answerRows = [];
 
-    // test_results 本体
-    const results = sections.map(s => ({
-      user_id: user.id, mode: s.mode, score: s.score, total: s.total,
-      duration_sec: s.elapsedSec, session_id: sessionId, user_agent: ua, referrer: ref
-    }));
-    if (sections.length > 1) {
-      const tScore = sections.reduce((a, b) => a + b.score, 0);
-      const tTotal = sections.reduce((a, b) => a + b.total, 0);
-      const tDur   = sections.reduce((a, b) => a + b.elapsedSec, 0);
-      results.push({ user_id: user.id, mode: uiMode, score: tScore, total: tTotal, duration_sec: tDur, session_id: sessionId, user_agent: ua, referrer: ref });
+  for (const s of sections) {
+    const qpp = qsPerPassageMap[s.mode] || 1;
+    for (const d of s.detail || []) {
+      if (d.correctIdx < 0) continue;
+      const ti = state.answerTimes || {};
+      answerRows.push({
+        mode: s.mode,
+        section_index: d.passageIdx,
+        question_index: (typeof d.globalIdx === "number" && qpp) ? (d.globalIdx % qpp) : 0,
+        global_index: d.globalIdx,
+        selected_index: (d.userIdx === null || d.userIdx === undefined) ? null : d.userIdx,
+        correct_index: d.correctIdx,
+        is_correct: !!d.isCorrect,
+        time_spent_sec: ti[d.globalIdx] || null
+      });
     }
-    const { error: rErr } = await window.AuthApp.client.from("test_results").insert(results);
-    if (rErr) console.warn("test_results insert failed:", rErr);
-
-    // 問題単位の回答ログ
-    const qsPerPassageMap = { ja: 4, en: 3, num: 1 };
-    const answerRows = [];
-    for (const s of sections) {
-      const qpp = qsPerPassageMap[s.mode] || 1;
-      for (const d of s.detail || []) {
-        if (d.correctIdx < 0) continue; // 生成失敗
-        const ti = state.answerTimes || {};
-        answerRows.push({
-          user_id: user.id,
-          session_id: sessionId,
-          mode: s.mode,
-          section_index: d.passageIdx,
-          question_index: (typeof d.globalIdx === "number" && qpp) ? (d.globalIdx % qpp) : 0,
-          global_index: d.globalIdx,
-          selected_index: (d.userIdx === null || d.userIdx === undefined) ? null : d.userIdx,
-          correct_index: d.correctIdx,
-          is_correct: !!d.isCorrect,
-          time_spent_sec: ti[d.globalIdx] || null
-        });
-      }
-    }
-    if (answerRows.length > 0) {
-      const { error: aErr } = await window.AuthApp.client.from("test_answers").insert(answerRows);
-      if (aErr) console.warn("test_answers insert failed:", aErr);
-    }
-    // セッション ID リセット（次回の受験で新しいセッション ID）
-    state.sessionId = null;
-  } catch (e) {
-    console.warn("saveTestResultsToSupabase error:", e);
   }
+
+  window.AuthApp?.saveAttempt?.({
+    user_id: user?.id || null,
+    user_email: user?.email || null,
+    session_id: sessionId,
+    ui_mode: uiMode,
+    sections: sections.map(s => ({
+      mode: s.mode,
+      score: s.score,
+      total: s.total,
+      duration_sec: s.elapsedSec
+    })),
+    answers: answerRows,
+    user_agent: navigator.userAgent.slice(0, 300)
+  });
+  state.sessionId = null;
 }
 
 function finishTest() { finishCurrentSection(); }
@@ -1746,76 +1716,32 @@ function resetAndSetup() {
 (async function renderAuthBar() {
   const statusEl = document.getElementById("authStatus");
   const linksEl = document.getElementById("authLinks");
-  if (!window.AuthApp) return;
-  await window.AuthApp.ready;
-  if (!window.AuthApp.client) {
-    statusEl.textContent = "未ログイン（認証機能未設定）";
-    linksEl.innerHTML = "";
+  if (!window.AuthApp) {
+    statusEl.textContent = "オフライン";
     return;
   }
   async function refresh() {
     const u = await window.AuthApp.getUser();
     if (u) {
-      let name = u.email;
-      let isAdmin = false;
-      try {
-        const { data } = await window.AuthApp.client.from("profiles").select("nickname,is_admin").eq("id", u.id).single();
-        if (data?.nickname) name = data.nickname;
-        isAdmin = !!data?.is_admin;
-      } catch {}
-      const adminBadge = isAdmin ? `<span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:0.5px;margin-left:6px">ADMIN</span>` : "";
-      statusEl.innerHTML = `こんにちは、${escapeHtml(name)} さん${adminBadge}`;
-      const adminBtn = isAdmin ? `<button class="auth-btn primary" id="adminBtn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-color:transparent">管理画面へ</button>` : "";
-      linksEl.innerHTML = `${adminBtn}<button class="auth-btn" id="logoutLink">ログアウト</button>`;
+      const name = u.nickname || u.email;
+      statusEl.innerHTML = `こんにちは、${escapeHtml(name)} さん（ローカル保存）`;
+      linksEl.innerHTML = `<button class="auth-btn" id="logoutLink">ログアウト</button>`;
       document.getElementById("logoutLink").addEventListener("click", async (e) => {
         e.preventDefault();
         await window.AuthApp.signOut();
         location.reload();
       });
-      if (isAdmin) {
-        document.getElementById("adminBtn").addEventListener("click", async (e) => {
-          e.preventDefault();
-          try {
-            const { data: sess } = await window.AuthApp.client.auth.getSession();
-            const token = sess?.session?.access_token;
-            if (!token) { alert("セッションが無効です。再ログインしてください。"); return; }
-            const r = await fetch("/admin/login-sso", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ access_token: token }),
-              credentials: "same-origin"
-            });
-            if (r.ok) { location.href = "/admin"; return; }
-            const j = await r.json().catch(() => ({}));
-            alert("管理画面アクセス失敗: " + (j.error || r.status));
-          } catch (err) {
-            alert("エラー: " + err.message);
-          }
-        });
-      }
     } else {
-      statusEl.textContent = "（未ログイン）";
+      statusEl.textContent = "未ログイン（外部送信なし）";
       linksEl.innerHTML = `<a href="/login" class="auth-btn">ログイン</a><a href="/signup" class="auth-btn primary">新規登録</a>`;
     }
   }
   refresh();
 })();
 
-/* 起動: 認証必須ガード */
+/* 起動: 認証は任意。API や外部サービスには接続しない。 */
 (async function bootstrap() {
-  // Supabase クライアント初期化を待つ
-  if (window.AuthApp) {
-    await window.AuthApp.ready;
-    // 認証が利用可能ならログイン状態をチェック
-    if (window.AuthApp.client) {
-      const u = await window.AuthApp.getUser();
-      if (!u) {
-        // 未ログインならログインページへリダイレクト
-        location.href = "/login";
-        return;
-      }
-    }
-  }
+  await window.AuthApp?.ready;
   renderSetup();
 })();
 </script>
