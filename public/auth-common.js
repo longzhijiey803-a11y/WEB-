@@ -1,56 +1,163 @@
 /* ============================================================
-   Supabase 共通クライアント初期化 + 認証ユーティリティ
-   すべての認証関連ページから読み込む前提。
-   依存: Supabase JS (CDN) を事前に <script> で読み込むこと。
+   Offline auth/profile/history helpers.
+   No network calls, no CDN, no external service. Everything stays
+   in this browser's localStorage.
 ============================================================ */
 (function () {
   "use strict";
 
-  window.AuthApp = {
-    client: null,
-    config: null,
-    ready: null
+  const KEYS = {
+    users: "webtest_offline_users_v1",
+    session: "webtest_offline_session_v1",
+    results: "webtest_offline_results_v1",
+    surveys: "webtest_offline_surveys_v1",
+    consents: "webtest_offline_consents_v1"
   };
 
-  window.AuthApp.ready = (async () => {
+  const nowIso = () => new Date().toISOString();
+  const uuid = () =>
+    crypto?.randomUUID?.() ||
+    `local_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+
+  function readJson(key, fallback) {
     try {
-      const r = await fetch("/api/config");
-      const cfg = await r.json();
-      window.AuthApp.config = cfg;
-      const url = cfg?.supabase?.url;
-      const key = cfg?.supabase?.anonKey;
-      if (url && key && window.supabase && typeof window.supabase.createClient === "function") {
-        window.AuthApp.client = window.supabase.createClient(url, key, {
-          auth: { persistSession: true, autoRefreshToken: true }
-        });
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function writeJson(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function publicUser(user) {
+    if (!user) return null;
+    const { passwordHash, ...safe } = user;
+    return safe;
+  }
+
+  async function sha256(text) {
+    const enc = new TextEncoder().encode(text);
+    const digest = await crypto.subtle.digest("SHA-256", enc);
+    return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  function getUsers() {
+    return readJson(KEYS.users, []);
+  }
+
+  function saveUsers(users) {
+    writeJson(KEYS.users, users);
+  }
+
+  function getSession() {
+    return readJson(KEYS.session, null);
+  }
+
+  function setSession(session) {
+    writeJson(KEYS.session, session);
+  }
+
+  async function currentUser() {
+    const session = getSession();
+    if (!session?.userId) return null;
+    const user = getUsers().find(u => u.id === session.userId);
+    return publicUser(user);
+  }
+
+  window.AuthApp = {
+    config: { offline: true },
+    ready: Promise.resolve(),
+    client: { offline: true },
+
+    async register(profile) {
+      const email = String(profile.email || "").trim().toLowerCase();
+      const password = String(profile.password || "");
+      if (!email) throw new Error("メールアドレスを入力してください");
+      if (password.length < 8) throw new Error("パスワードは8文字以上にしてください");
+      const users = getUsers();
+      if (users.some(u => u.email === email)) {
+        throw new Error("このメールアドレスは既に登録されています");
       }
-    } catch (e) {
-      console.error("AuthApp init failed:", e);
+      const user = {
+        id: uuid(),
+        email,
+        passwordHash: await sha256(password),
+        nickname: String(profile.nickname || "").trim(),
+        university: String(profile.university || "").trim(),
+        graduation_year: String(profile.graduation_year || "").trim(),
+        first_choice_industry: profile.first_choice_industry || null,
+        is_admin: false,
+        created_at: nowIso(),
+        last_sign_in_at: nowIso()
+      };
+      users.push(user);
+      saveUsers(users);
+      writeJson(KEYS.consents, readJson(KEYS.consents, []).concat({
+        id: uuid(),
+        user_id: user.id,
+        consent_type: "terms_privacy",
+        agreed: !!profile.consent_terms,
+        agreed_at: nowIso(),
+        user_agent: navigator.userAgent.slice(0, 300)
+      }));
+      setSession({ userId: user.id, signedInAt: nowIso() });
+      return publicUser(user);
+    },
+
+    async signIn(email, password) {
+      const normalized = String(email || "").trim().toLowerCase();
+      const passwordHash = await sha256(String(password || ""));
+      const users = getUsers();
+      const idx = users.findIndex(u => u.email === normalized && u.passwordHash === passwordHash);
+      if (idx < 0) throw new Error("メールアドレスまたはパスワードが違います");
+      users[idx].last_sign_in_at = nowIso();
+      saveUsers(users);
+      setSession({ userId: users[idx].id, signedInAt: nowIso() });
+      return publicUser(users[idx]);
+    },
+
+    async getUser() {
+      return currentUser();
+    },
+
+    async getProfile() {
+      return currentUser();
+    },
+
+    async signOut() {
+      localStorage.removeItem(KEYS.session);
+    },
+
+    saveAttempt(attempt) {
+      const rows = readJson(KEYS.results, []);
+      rows.push({ id: uuid(), saved_at: nowIso(), ...attempt });
+      writeJson(KEYS.results, rows);
+    },
+
+    saveSurvey(survey) {
+      const rows = readJson(KEYS.surveys, []);
+      rows.push({ id: uuid(), submitted_at: nowIso(), ...survey });
+      writeJson(KEYS.surveys, rows);
+    },
+
+    exportLocalData() {
+      return {
+        users: getUsers().map(publicUser),
+        session: getSession(),
+        results: readJson(KEYS.results, []),
+        surveys: readJson(KEYS.surveys, []),
+        consents: readJson(KEYS.consents, [])
+      };
+    },
+
+    clearLocalData() {
+      Object.values(KEYS).forEach(key => localStorage.removeItem(key));
     }
-  })();
-
-  window.AuthApp.getUser = async function () {
-    await window.AuthApp.ready;
-    if (!window.AuthApp.client) return null;
-    const { data } = await window.AuthApp.client.auth.getUser();
-    return data?.user || null;
   };
 
-  window.AuthApp.signOut = async function () {
-    await window.AuthApp.ready;
-    if (!window.AuthApp.client) return;
-    await window.AuthApp.client.auth.signOut();
-  };
-
-  window.AuthApp.requireReady = async function () {
-    await window.AuthApp.ready;
-    if (!window.AuthApp.client) {
-      throw new Error("認証機能が未設定です（サーバーの環境変数 SUPABASE_URL / SUPABASE_ANON_KEY を確認してください）");
-    }
-    return window.AuthApp.client;
-  };
-
-  // 共通 CSS トークン + レスポンシブ
   const style = document.createElement("style");
   style.textContent = `
     :root {
@@ -72,19 +179,18 @@
     h2 { font-size: 17px; margin: 0 0 12px; }
     .panel { background: var(--panel); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
     label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--muted); }
-    /* iOSズームを防ぐため入力は16px以上 */
     input[type="text"], input[type="email"], input[type="password"], select, textarea {
       width: 100%; padding: 12px 14px; border: 1px solid var(--border);
       border-radius: 8px; font-size: 16px; background: #fff; font-family: inherit;
       -webkit-appearance: none; appearance: none;
     }
-    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+    select { padding-right: 36px; }
     .field { margin-bottom: 14px; }
     button, .btn {
       background: var(--accent); color: white; border: none;
       padding: 12px 22px; border-radius: 8px; font-size: 15px;
       cursor: pointer; font-family: inherit; transition: background 0.15s;
-      min-height: 44px; /* touch target */
+      min-height: 44px;
     }
     button:hover:not(:disabled) { background: var(--accent-hover); }
     button:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -104,8 +210,6 @@
     th { background: #f5f5f7; font-weight: 600; position: sticky; top: 0; }
     .table-wrap { overflow-x: auto; max-height: 70vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
     .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
-
-    /* モバイル */
     @media (max-width: 640px) {
       .container { padding: 18px 12px 48px; }
       h1 { font-size: 20px; }

@@ -4,13 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>新規登録 — WEBテスト練習</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/auth-common.js"></script>
 </head>
 <body>
 <div class="container">
   <h1>新規登録</h1>
-  <p class="muted">WEBテスト練習のアカウントを作成します。成績をマイページに保存し、継続して学習できます。</p>
+  <p class="muted">WEBテスト練習のローカルアカウントを作成します。情報はこのブラウザ内だけに保存され、外部送信されません。</p>
 
   <div id="msg"></div>
 
@@ -24,7 +23,7 @@
       <div class="field">
         <label>パスワード（必須、8文字以上）</label>
         <input type="password" id="password" required minlength="8" autocomplete="new-password">
-        <div class="hint">Supabase により自動でハッシュ化されて保存されます（管理者もパスワードを知ることはできません）。</div>
+        <div class="hint">このブラウザ内にハッシュ化して保存します。外部サービスには送信しません。</div>
       </div>
       <div class="field">
         <label>ニックネーム（必須）</label>
@@ -260,51 +259,7 @@ document.getElementById("f").addEventListener("submit", async (ev) => {
   }
 
   try {
-    const client = await window.AuthApp.requireReady();
-
-    // 1. Supabase Auth で新規登録
-    const { data: suData, error: suErr } = await client.auth.signUp({
-      email: payload.email,
-      password: payload.password
-    });
-    if (suErr) throw suErr;
-
-    // 2. セッションが無ければ、サインインを試みる（メール確認がOFFの場合に成功）
-    let session = suData.session;
-    let user = suData.user;
-    if (!session) {
-      const { data: siData, error: siErr } = await client.auth.signInWithPassword({
-        email: payload.email,
-        password: payload.password
-      });
-      if (siErr) {
-        // メール確認が有効な場合。プロフィール情報はローカル保存しておき、確認後のログイン時に登録
-        localStorage.setItem("pending_profile", JSON.stringify(payload));
-        showMsg("ok", "✓ 登録完了。確認メールを送信しました。メール内のリンクをクリックして有効化してください。");
-        btn.disabled = false;
-        return;
-      }
-      session = siData.session;
-      user = siData.user;
-    }
-
-    // 3. profiles に INSERT
-    const { error: profErr } = await client.from("profiles").upsert({
-      id: user.id,
-      nickname: payload.nickname,
-      university: payload.university,
-      graduation_year: payload.graduation_year,
-      first_choice_industry: payload.first_choice_industry
-    });
-    if (profErr) throw profErr;
-
-    // 4. 同意ログ記録
-    const ua = navigator.userAgent.slice(0, 300);
-    await client.from("consent_logs").insert([
-      { user_id: user.id, consent_type: "terms_privacy", agreed: payload.consent_terms, user_agent: ua }
-    ]);
-
-    localStorage.removeItem("pending_profile");
+    await window.AuthApp.register(payload);
     showMsg("ok", "✓ 登録が完了しました。テストページへ移動します…");
     setTimeout(() => { location.href = "/"; }, 1200);
   } catch (e) {
