@@ -17,11 +17,11 @@
     analyticsEvents: "webtest_offline_analytics_events_v1",
     testSessions: "webtest_offline_test_sessions_v1",
     activeTest: "webtest_offline_active_test_v1",
-    adminPassHash: "webtest_offline_admin_pass_hash_v1",
     adminSession: "webtest_offline_admin_session_v1"
   };
   const MAX_ANALYTICS_EVENTS = 5000;
   const MAX_TEST_SESSIONS = 1000;
+  const FIXED_ADMIN_PASS_HASH = "9abe47022b36a1070c61a1e67540180e9a758a0744dc3db53e9ddb7444db77c0";
 
   const COMMON_FACULTIES = [
     "文学部",
@@ -623,26 +623,14 @@
 
     getAdminState() {
       return {
-        has_passcode: !!localStorage.getItem(KEYS.adminPassHash),
+        has_passcode: true,
         unlocked: !!readJson(KEYS.adminSession, null)?.unlocked
       };
     },
 
-    async setAdminPasscode(passcode) {
-      const value = String(passcode || "");
-      if (value.length < 8) throw new Error("管理者キーは8文字以上にしてください");
-      const hash = await sha256(value);
-      localStorage.setItem(KEYS.adminPassHash, hash);
-      writeJson(KEYS.adminSession, { unlocked: true, unlocked_at: nowIso() });
-      appendAnalyticsEvent("admin_passcode_set", {});
-      return true;
-    },
-
     async unlockAdmin(passcode) {
-      const expected = localStorage.getItem(KEYS.adminPassHash);
-      if (!expected) throw new Error("管理者キーが未設定です");
       const actual = await sha256(String(passcode || ""));
-      if (actual !== expected) throw new Error("管理者キーが違います");
+      if (actual !== FIXED_ADMIN_PASS_HASH) throw new Error("管理者パスワードが違います");
       writeJson(KEYS.adminSession, { unlocked: true, unlocked_at: nowIso() });
       appendAnalyticsEvent("admin_unlock", {});
       return true;

@@ -644,27 +644,26 @@ function renderUserTable(rows, query = "") {
 }
 
 function renderGate() {
-  const admin = window.AuthApp?.getAdminState?.() || { has_passcode: false, unlocked: false };
+  const admin = window.AuthApp?.getAdminState?.() || { has_passcode: true, unlocked: false };
   appEl.innerHTML = "";
-  if (admin.has_passcode && admin.unlocked) {
+  if (admin.unlocked) {
     renderDashboard();
     return;
   }
 
-  const isSetup = !admin.has_passcode;
   gateEl.innerHTML = `
     <div class="gate">
       <div class="panel">
-        <h2>${isSetup ? "管理者キーを設定" : "管理者ログイン"}</h2>
-        <p class="muted">${isSetup ? "初回のみ、このブラウザで管理画面を開くためのキーを設定します。" : "設定済みの管理者キーを入力してください。"}</p>
+        <h2>管理者ログイン</h2>
+        <p class="muted">決められた管理者パスワードを入力してください。</p>
         <div id="gateMsg"></div>
         <form id="gateForm">
           <div class="field">
-            <label for="adminPass">${isSetup ? "新しい管理者キー（8文字以上）" : "管理者キー"}</label>
-            <input id="adminPass" type="password" required minlength="8" autocomplete="current-password" autofocus>
+            <label for="adminPass">管理者パスワード</label>
+            <input id="adminPass" type="password" required autocomplete="current-password" autofocus>
           </div>
           <div class="row">
-            <button type="submit">${isSetup ? "設定して開く" : "開く"}</button>
+            <button type="submit">開く</button>
             <a class="admin-link" href="index.html">戻る</a>
           </div>
         </form>
@@ -676,8 +675,7 @@ function renderGate() {
     const msg = document.getElementById("gateMsg");
     const pass = document.getElementById("adminPass").value;
     try {
-      if (isSetup) await window.AuthApp.setAdminPasscode(pass);
-      else await window.AuthApp.unlockAdmin(pass);
+      await window.AuthApp.unlockAdmin(pass);
       renderDashboard();
     } catch (err) {
       msg.innerHTML = `<div class="error">${escapeHtml(err.message || String(err))}</div>`;
