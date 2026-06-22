@@ -29,12 +29,15 @@
   h1 { font-size: 22px; margin: 0 0 8px; }
   h2 { font-size: 18px; margin: 0 0 12px; }
   .muted { color: var(--muted); font-size: 13px; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
   .panel { background: var(--panel); border-radius: 12px; padding: 24px; box-shadow: var(--shadow); margin-bottom: 16px; }
   label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--muted); }
-  input[type="password"], input[type="text"], textarea {
+  input[type="password"], input[type="text"], input[type="search"], input[type="email"], input[type="tel"], select, textarea {
     width: 100%; padding: 10px 12px; border: 1px solid var(--border);
     border-radius: 8px; font-size: 14px; background: #fff; font-family: inherit;
   }
+  select { min-height: 42px; }
+  input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
   textarea { resize: vertical; min-height: 80px; font-family: var(--mono); font-size: 12px; }
   button {
     background: var(--accent); color: white; border: none;
@@ -224,31 +227,304 @@
   .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
   .history-item:first-child { border-top: none; }
 
+  .diagnosis-start { display: grid; gap: 16px; }
+  .setup-hero {
+    background: linear-gradient(135deg, #ffffff 0%, #f7fbff 52%, #f7f2ff 100%);
+    border: 1px solid #e7e9f0;
+    border-radius: 8px;
+    padding: 28px;
+    box-shadow: var(--shadow);
+  }
+  .setup-hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  .setup-eyebrow {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+  .diagnosis-title {
+    margin: 0;
+    font-size: 30px;
+    line-height: 1.25;
+  }
+  .setup-copy { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+  .setup-type-chip {
+    min-width: 128px;
+    padding: 12px 14px;
+    border: 1px solid #dfe3ec;
+    border-radius: 8px;
+    background: #fff;
+    text-align: center;
+  }
+  .setup-type-chip strong { display: block; color: var(--text); font-size: 26px; line-height: 1.1; }
+  .setup-type-chip span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+  .setup-metrics,
+  .result-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .metric-tile {
+    min-height: 78px;
+    padding: 12px;
+    border: 1px solid #e1e4eb;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.78);
+  }
+  .metric-label { display: block; color: var(--muted); font-size: 12px; }
+  .metric-value { display: block; margin-top: 4px; color: var(--text); font-size: 20px; font-weight: 700; }
+  .mode-card-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .diagnosis-start .lang-btn.mode-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-height: 154px;
+    padding: 16px;
+    border: 1px solid #dfe3ec;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+    text-align: left;
+    white-space: normal;
+    box-shadow: none;
+  }
+  .diagnosis-start .lang-btn.mode-card:hover { background: #f8fbff; border-color: #b8cceb; }
+  .diagnosis-start .lang-btn.mode-card.active {
+    background: #f0f7ff;
+    border-color: var(--accent);
+    box-shadow: 0 8px 20px rgba(0,113,227,0.12);
+  }
+  .mode-code { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 0; }
+  .mode-title { font-size: 15px; font-weight: 700; line-height: 1.35; }
+  .mode-desc { color: var(--muted); font-size: 12px; line-height: 1.55; }
+  .mode-meta { margin-top: auto; color: var(--text); font-size: 12px; font-weight: 700; }
+  .setup-action-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .diagnosis-start .start-btn-big {
+    background: var(--text);
+    box-shadow: none;
+    border-radius: 8px;
+    min-width: 190px;
+  }
+  .diagnosis-start .start-btn-big:hover:not(:disabled) { background: #34343a; }
+  .setup-flow-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .setup-flow-item {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    font-size: 13px;
+  }
+  .setup-flow-item strong { display: block; margin-bottom: 3px; }
+  .setup-section {
+    padding: 4px 0;
+  }
+  .setup-section h2 { margin-bottom: 12px; }
+
+  .result-shell { display: grid; gap: 16px; }
+  .result-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 176px;
+    align-items: center;
+    gap: 24px;
+    padding: 28px;
+    border-radius: 8px;
+    border: 1px solid #e7e9f0;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 55%, #fff8f1 100%);
+    box-shadow: var(--shadow);
+  }
+  .result-title { margin: 0; font-size: 30px; line-height: 1.25; }
+  .result-profile-line { margin-top: 12px; color: var(--muted); font-size: 13px; }
+  .result-score-ring {
+    width: 176px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: conic-gradient(var(--accent) calc(var(--score) * 1%), #e5e7ed 0);
+    display: grid;
+    place-items: center;
+  }
+  .result-score-ring-inner {
+    width: 132px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #fff;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    box-shadow: inset 0 0 0 1px #eef0f4;
+  }
+  .result-score-ring-inner strong { display: block; font-size: 34px; line-height: 1; }
+  .result-score-ring-inner span { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
+  .section-score-panel,
+  .explain-section {
+    padding: 22px;
+    border: 1px solid #e7e9f0;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: var(--shadow);
+  }
+  .section-score-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 1fr) minmax(160px, 2fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+  }
+  .section-score-row:first-of-type { border-top: none; }
+  .section-score-bar { height: 8px; border-radius: 999px; background: #eceef3; overflow: hidden; }
+  .section-score-bar span { display: block; height: 100%; background: var(--accent); }
+  .explain-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .explain-kicker { color: var(--accent); font-size: 12px; font-weight: 800; }
+  .explain-card {
+    border-top: 1px solid var(--border);
+    padding: 14px 0;
+  }
+  .explain-card:first-of-type { border-top: none; }
+  .explain-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    cursor: pointer;
+  }
+  .question-type {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .question-number {
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: var(--text);
+    font-weight: 800;
+    font-size: 13px;
+  }
+  .question-summary { min-width: 0; overflow-wrap: anywhere; }
+  .question-summary strong { display: block; line-height: 1.35; }
+  .question-summary span { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+  .answer-state {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 74px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .answer-state.correct { background: #e8f9ee; color: var(--correct); }
+  .answer-state.wrong { background: #ffeeee; color: var(--wrong); }
+  .answer-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .answer-box {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+  }
+  .answer-box span { display: block; color: var(--muted); font-size: 12px; }
+  .answer-box strong { display: block; margin-top: 4px; font-size: 13px; overflow-wrap: anywhere; }
+  .result-actions { justify-content: flex-end; }
+
+  .profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+  .profile-grid .field { margin-bottom: 0; }
+  .profile-grid .field.full { grid-column: 1 / -1; }
+  .privacy-excerpt {
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #f5f5f7;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+  .privacy-excerpt.terms-excerpt { max-height: 300px; }
+  .legal-pre {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.85;
+  }
+  .privacy-excerpt p { margin: 0 0 8px; }
+  .privacy-excerpt p:last-child { margin-bottom: 0; }
+  .consent-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 12px 0;
+  }
+  .consent-row label { margin: 0; color: var(--text); line-height: 1.6; }
+
   details { margin-top: 12px; }
   summary { cursor: pointer; color: var(--accent); font-size: 13px; }
   code.blob { display: block; background: #f5f5f7; padding: 10px; border-radius: 6px; font-family: var(--mono); font-size: 11px; word-break: break-all; margin: 8px 0; }
+
+  @media (max-width: 640px) {
+    .profile-grid { grid-template-columns: 1fr; }
+    .setup-hero,
+    .result-hero,
+    .section-score-panel,
+    .explain-section { padding: 18px; }
+    .setup-hero-top,
+    .setup-action-row,
+    .explain-header { display: block; }
+    .setup-type-chip { margin-top: 18px; text-align: left; }
+    .diagnosis-title { font-size: 24px; }
+    .setup-metrics,
+    .result-metrics,
+    .mode-card-grid,
+    .answer-detail-grid { grid-template-columns: 1fr; }
+    .diagnosis-start .lang-btn.mode-card { min-height: 126px; }
+    .diagnosis-start .start-btn-big { width: 100%; margin-top: 12px; }
+    .result-hero { grid-template-columns: 1fr; }
+    .result-score-ring { width: min(176px, 62vw); margin: 0 auto; }
+    .section-score-row { grid-template-columns: 1fr; }
+    .explain-head { grid-template-columns: 1fr; }
+    .answer-state { width: max-content; }
+    .result-actions { justify-content: stretch; }
+    .result-actions button { width: 100%; }
+  }
 </style>
 </head>
 <body>
-<div id="authBar" style="background:#fff;border-bottom:1px solid var(--border);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 1px 4px rgba(0,0,0,0.04);position:sticky;top:0;z-index:20">
-  <div style="display:flex;align-items:center;gap:8px">
-    <strong style="font-size:15px;color:var(--text)">📘 WEBテスト練習</strong>
-    <span id="authStatus" style="color:var(--muted);font-size:13px"></span>
-  </div>
-  <div id="authLinks" style="display:flex;gap:8px;align-items:center"></div>
-</div>
-<style>
-  @media (max-width: 640px) {
-    #authBar { padding: 10px 12px; }
-    #authBar strong { font-size: 14px; }
-    #authBar #authStatus { display: none; }
-    #authBar .auth-btn { padding: 8px 14px; font-size: 13px; }
-  }
-  .auth-btn { display: inline-block; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text); font-family: inherit; min-height: 38px; line-height: 1.2; }
-  .auth-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .auth-btn.primary:hover { background: var(--accent-hover); }
-  .auth-btn:not(.primary):hover { background: #f5f5f7; }
-</style>
+
 <div id="app"></div>
 <video id="correctSound" preload="auto" playsinline style="display:none">
   <source src="correct.mov" type="video/quicktime">
@@ -574,6 +850,112 @@ Create one set of English reading-comprehension questions following these rules.
 /* ============================================================
    共通ヘルパ
 ============================================================ */
+const PROFILE_TERMS_TITLE = "正式会員登録規約・プライバシーポリシー";
+const PROFILE_TERMS_TEXT = `正式会員登録を希望される方は、本サービスを企画・管理する運営者に対し、以下の規約に同意していただく必要があります。
+
+第1条（基本用語の定義）
+本規約において使用する基本用語の定義は、次のとおりとします。
+1. 本サービスとは、運営者がインターネット上で提供するWebテスト練習、解説提供、学習履歴の保存、プロフィール登録、就職活動支援情報の提供、企業スカウト等に関連する各種サービスをいいます。
+2. 会員とは、就職活動または就職活動準備を行う大学生、大学院生、短期大学生、高等専門学校生、専門学校生、大学校生、またはこれらの学校を卒業後一定期間内の方で、所定の登録手続きを行い、運営者が承認した方をいいます。
+3. 提携企業とは、採用活動、キャリア形成支援、職業紹介、インターンシップ、イベント運営その他就職活動に関連するサービスを提供する法人または団体をいいます。
+4. スカウトとは、会員の登録情報、希望条件、テスト結果その他の利用情報に基づき、提携企業または運営者から会員に対して送付される案内、連絡、選考または面談に関する打診をいいます。
+
+第2条（会員登録）
+1. 会員登録を希望する者は、本規約、プライバシーポリシー、および個人情報の第三者提供に関する事項に同意のうえ、運営者が定める方法により登録を申し込むものとします。
+2. 登録希望者は、登録時に入力する氏名、フリガナ、学校名、学部・学科、卒業年度、メールアドレス、電話番号その他の情報が真実かつ正確であることを保証します。
+3. 運営者は、登録希望者が虚偽の情報を入力した場合、過去に本規約違反があった場合、第三者になりすました場合、その他運営者が不適切と判断した場合、登録を承認しないことがあります。
+4. 会員は、登録内容に変更が生じた場合、速やかに最新の情報へ更新するものとします。
+
+第3条（規約の承諾）
+会員は、登録画面において同意チェックを行い、登録情報を送信した時点で、本規約およびプライバシーポリシーの内容を理解し、これらが本サービス利用契約の内容となることを承諾したものとします。
+
+第4条（サービスの内容）
+会員は、本サービスにおいて、Webテスト形式の練習問題、採点結果、解答解説、学習履歴、プロフィール登録、就職活動に関連する情報提供、企業または職業紹介事業者等からの案内、スカウトその他運営者が提供する機能を利用することができます。
+
+第5条（登録内容の変更および退会）
+1. 会員は、運営者が定める方法により、登録内容を変更、追加または削除することができます。
+2. 会員は、いつでも自らの意思で退会手続きを行うことができます。
+3. 退会後も、法令上の保存義務、問い合わせ対応、不正利用防止、バックアップ保存その他合理的な理由がある場合、運営者は必要な範囲で会員情報または利用履歴を保持することがあります。
+
+第6条（禁止行為）
+会員は、本サービスの利用にあたり、次の行為をしてはなりません。
+1. 虚偽、不正確または誤解を招く情報を登録する行為
+2. 第三者になりすます行為
+3. 他の会員、提携企業、第三者または運営者の知的財産権、肖像権、プライバシー、名誉、信用その他の権利または利益を侵害する行為
+4. 本サービスで提供される問題、解説、画面、データその他の情報を、私的利用の範囲を超えて複製、転載、販売、公開、送信または二次利用する行為
+5. 営利目的、広告宣伝目的、勧誘目的またはスパム目的で本サービスを利用する行為
+6. 法令または公序良俗に反する行為
+7. 本サービスの運営を妨害する行為、不正アクセス、過度なアクセス、自動化ツールによる利用、脆弱性調査その他運営者が不適切と判断する行為
+
+第7条（会員登録の停止または抹消）
+運営者は、会員が本規約に違反した場合、登録情報に虚偽があると判断した場合、長期間利用がない場合、その他運営者が必要と判断した場合、事前通知なく本サービスの全部または一部の利用停止、会員登録の抹消、投稿情報または保存情報の削除を行うことができます。
+
+第8条（個人情報の取得）
+運営者は、本サービスの提供にあたり、氏名、フリガナ、大学名、学部・学科、卒業年度、メールアドレス、電話番号、テスト結果、正答率、回答履歴、利用日時、端末情報、ブラウザ情報、Cookieその他本サービス利用に伴い取得される情報を取得します。
+
+第9条（個人情報の利用目的）
+運営者は、取得した個人情報を次の目的で利用します。
+1. 本サービスの提供、本人確認、会員管理、問い合わせ対応のため
+2. テスト結果、解答解説、学習履歴、利用状況の表示および保存のため
+3. 会員の就職活動またはキャリア形成を支援するため
+4. 提携企業、採用活動を行う企業、職業紹介事業者、イベント運営者等からの案内、スカウト、面談、選考、セミナー、インターンシップその他関連情報を提供するため
+5. 本サービスの改善、新機能開発、品質向上、不正利用防止、統計分析のため
+6. 個人を特定できない形式に加工した統計データの作成、公表、分析、マーケティング利用のため
+
+第10条（個人情報の第三者提供）
+1. 運営者は、会員の明示的な同意に基づき、会員の就職活動支援を目的として、氏名、フリガナ、大学名、学部・学科、卒業年度、メールアドレス、電話番号、テスト成績、正答率、回答履歴その他登録情報を、提携企業へ提供することがあります。
+2. 提供先は、採用活動を行う企業、職業紹介事業者、キャリア支援サービス事業者、イベント運営者その他会員の就職活動支援に関わる事業者とします。
+3. 提供方法は、暗号化通信、アクセス制限された管理画面、セキュアなファイル共有その他安全管理措置を講じた方法とします。
+4. 会員は、運営者所定の方法により、第三者提供の停止を求めることができます。運営者は、本人から申し出があった場合、法令上必要な場合を除き、第三者提供を速やかに停止します。
+
+第11条（同意を得ない第三者開示）
+運営者は、法令に基づく場合、人の生命、身体または財産の保護のために必要な場合、公衆衛生の向上または児童の健全な育成の推進のために必要な場合、国の機関または地方公共団体等への協力が必要な場合を除き、本人の同意なく個人情報を第三者に開示しません。
+
+第12条（安全管理措置）
+運営者は、個人情報の漏えい、滅失、毀損、不正アクセス等を防止するため、アクセス制御、暗号化、ログ管理、取扱者の限定、委託先管理その他必要かつ適切な安全管理措置を講じます。
+
+第13条（外部委託）
+運営者は、利用目的の達成に必要な範囲で、個人情報の取扱いの全部または一部を外部事業者に委託することがあります。この場合、運営者は委託先に対して必要かつ適切な監督を行います。
+
+第14条（知的財産権）
+本サービスに含まれる問題、解説、文章、画像、デザイン、プログラム、データベースその他一切のコンテンツに関する知的財産権は、運営者または正当な権利者に帰属します。会員は、運営者の許可なく複製、転載、改変、販売、公開、送信、二次利用を行うことはできません。
+
+第15条（免責）
+1. 本サービスで提供される問題および解説は学習支援を目的としたものであり、実際の採用試験の出題内容、採用結果、選考通過、内定取得その他の成果を保証するものではありません。
+2. 提携企業が提供する情報、連絡、案内、選考、面談その他の行為について、運営者はその正確性、完全性、有用性、適法性を保証しません。
+3. 会員の端末、通信環境、ブラウザ設定、誤入力、ID・パスワード管理不備、第三者による不正利用等により生じた損害について、運営者は責任を負いません。
+
+第16条（損害賠償）
+会員が本規約に違反し、運営者、提携企業、他の会員または第三者に損害を与えた場合、会員は自己の責任と費用においてこれを解決し、直接または間接を問わず一切の損害を賠償するものとします。
+
+第17条（サービスの変更・中断・終了）
+運営者は、会員への事前通知なく、本サービスの内容を変更、追加、停止、中断または終了することがあります。運営者は、これにより会員に生じた損害について、故意または重過失がある場合を除き責任を負いません。
+
+第18条（反社会的勢力の排除）
+会員は、自らが反社会的勢力に該当せず、反社会的勢力と関係を有していないことを表明し、保証します。
+
+第19条（規約の変更）
+運営者は、必要と判断した場合、本規約を変更することができます。変更後の規約は、本サービス上に表示された時点または運営者が定める効力発生日から適用されます。会員が変更後も本サービスを利用した場合、変更後の規約に同意したものとみなします。
+
+第20条（準拠法および管轄）
+本規約は日本法に準拠します。本サービスまたは本規約に関して紛争が生じた場合、運営者所在地を管轄する地方裁判所または簡易裁判所を第一審の専属的合意管轄裁判所とします。
+
+制定日：2026年4月1日
+最終改訂日：2026年6月22日
+
+【メールアドレス登録上の注意】
+誤ったメールアドレスを登録すると、第三者に本サービスからの通知が届く可能性があります。必ず本人が利用できる正しいメールアドレスを登録してください。`;
+const PROFILE_PRIVACY_TEXT = `プライバシーポリシー（抜粋）
+【個人情報の取扱いについて】
+
+1. 利用目的：当社は、取得した個人情報を、本アプリの解説提供、および利用者の就職活動を支援するための提携企業（採用活動を行う企業・職業紹介事業者等）への情報提供（スカウト等）の目的で利用します。
+
+2. 第三者提供：利用者の就職活動支援を目的として、同意を得た利用者の個人情報（氏名、大学名、連絡先、テスト成績等）を、暗号化等の適切な安全管理措置を講じた上で提携企業へ提供することがあります。
+
+3. 提供の停止：本人からの申し出があった場合、第三者提供を速やかに停止します。`;
+const PROFILE_LEGAL_TEXT = `${PROFILE_TERMS_TEXT}
+
+${PROFILE_PRIVACY_TEXT}`;
 const BAR_WIDTH = 20;
 
 // コンボ構成: 複数セクションを連続受験
@@ -585,11 +967,11 @@ const CHAINS = {
   num_ja_en: ["num", "ja", "en"]
 };
 const CHAIN_LABELS = {
-  ja: "言語",
-  en: "英語",
-  num: "計数",
-  num_ja: "計数+言語",
-  num_ja_en: "計数+言語+英語"
+  ja: "言語理解テスト",
+  en: "英語理解テスト",
+  num: "計数理解テスト",
+  num_ja: "計数＋言語テスト",
+  num_ja_en: "計数＋言語＋英語テスト"
 };
 
 const getMode = () => MODES[state.language];
@@ -624,6 +1006,7 @@ const state = {
   timerInterval: null,
   startTime: null,
   lastError: null,
+  _pendingResults: null,
 };
 // 初期化
 state.chain = CHAINS[state.uiMode].slice();
@@ -742,6 +1125,38 @@ function render(html) { app.innerHTML = html; }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
 }
+function renderLegalText(text) {
+  return `<pre class="legal-pre">${escapeHtml(text)}</pre>`;
+}
+function flattenSchoolMaster(master) {
+  return (master || []).flatMap(group =>
+    (group.universities || []).map(name => ({
+      name,
+      group: group.group || "大学",
+      faculties: (group.overrides && group.overrides[name]) || group.faculties || []
+    }))
+  );
+}
+function getSchoolByName(master, name) {
+  return flattenSchoolMaster(master).find(s => s.name === name) || null;
+}
+function renderUniversitySearchOptions(master) {
+  return flattenSchoolMaster(master)
+    .sort((a, b) => a.name.localeCompare(b.name, "ja"))
+    .map(s => `<option value="${escapeHtml(s.name)}" label="${escapeHtml(s.group)}"></option>`)
+    .join("");
+}
+function renderDepartmentSelectOptions(faculties, selected = "") {
+  const values = Array.from(new Set([...(faculties || []), "その他"]));
+  const fallback = selected && !values.includes(selected)
+    ? `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)}</option>`
+    : "";
+  return `
+    <option value="">選択してください</option>
+    ${fallback}
+    ${values.map(name => `<option value="${escapeHtml(name)}" ${name === selected ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}
+  `;
+}
 function renderBar(current, total, width = BAR_WIDTH) {
   const ratio = total > 0 ? Math.min(1, current / total) : 0;
   const filled = Math.round(width * ratio);
@@ -754,6 +1169,45 @@ function saveHistory(entry) {
   const list = loadHistory();
   list.unshift(entry);
   localStorage.setItem("history", JSON.stringify(list.slice(0, 20)));
+}
+function buildResultSummary(sections, uiMode, sessionId) {
+  const totalScore = sections.reduce((sum, s) => sum + s.score, 0);
+  const totalQuestions = sections.reduce((sum, s) => sum + s.total, 0);
+  const totalElapsedSec = sections.reduce((sum, s) => sum + s.elapsedSec, 0);
+  const accuracy = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+
+  return {
+    session_id: sessionId || null,
+    ui_mode: uiMode,
+    ui_label: CHAIN_LABELS[uiMode] || uiMode,
+    score: totalScore,
+    total_questions: totalQuestions,
+    accuracy_percent: accuracy,
+    elapsed_sec: totalElapsedSec,
+    completed_at: new Date().toISOString(),
+    sections: sections.map(s => ({
+      mode: s.mode,
+      mode_label: MODES[s.mode]?.label || s.mode,
+      score: s.score,
+      total_questions: s.total,
+      accuracy_percent: s.total > 0 ? Math.round((s.score / s.total) * 100) : 0,
+      elapsed_sec: s.elapsedSec
+    }))
+  };
+}
+function buildProfilePayload(profile, sections, uiMode, sessionId) {
+  return {
+    profile,
+    consent: {
+      terms_privacy_third_party: true,
+      terms_title: PROFILE_TERMS_TITLE,
+      consent_text: "正式会員登録規約およびプライバシーポリシー（提携企業への個人情報の第三者提供を含む）に同意する",
+      agreed_at: new Date().toISOString()
+    },
+    test_result: buildResultSummary(sections, uiMode, sessionId),
+    source: "webtest_offline",
+    user_agent: navigator.userAgent.slice(0, 300)
+  };
 }
 function playCorrectSound() {
   const s = document.getElementById("correctSound");
@@ -1029,62 +1483,88 @@ function renderSetup() {
   const chain = state.chain;
   const totalDuration = chain.reduce((s, m) => s + MODES[m].durationMin, 0);
   const totalQs = chain.reduce((s, m) => s + MODES[m].numPassages * MODES[m].qsPerPassage, 0);
+  const modeCards = Object.keys(CHAINS).map(ui => {
+    const modes = CHAINS[ui];
+    const minutes = modes.reduce((s, m) => s + MODES[m].durationMin, 0);
+    const questions = modes.reduce((s, m) => s + MODES[m].numPassages * MODES[m].qsPerPassage, 0);
+    return `
+      <button type="button" class="lang-btn mode-card ${state.uiMode === ui ? "active" : ""}" data-ui="${ui}">
+        <span class="mode-title">${escapeHtml(CHAIN_LABELS[ui])}</span>
+        <span class="mode-meta">${minutes}分 / ${questions}問</span>
+      </button>
+    `;
+  }).join("");
+  const flowItems = chain.map((m, idx) => `
+    <div class="setup-flow-item">
+      <strong>${idx + 1}. ${escapeHtml(MODES[m].label)}</strong>
+      <span class="muted">${MODES[m].durationMin}分 / ${MODES[m].numPassages * MODES[m].qsPerPassage}問</span>
+    </div>
+  `).join("");
+  const formatBody = isCombo() ? `
+    <p class="setup-copy">選択したタイプは、以下のセクションを順に受験します。</p>
+    <div class="setup-flow-list">${flowItems}</div>
+  ` : (
+    mode.id === "ja" ? `
+      <p class="setup-copy">
+        各長文につき4つの記述を読み、A・B・Cで論理判定します。
+      </p>
+      <div class="setup-flow-list">
+        <div class="setup-flow-item"><strong>A</strong><span class="muted">${JA_CHOICES[0]}</span></div>
+        <div class="setup-flow-item"><strong>B</strong><span class="muted">${JA_CHOICES[1]}</span></div>
+        <div class="setup-flow-item"><strong>C</strong><span class="muted">${JA_CHOICES[2]}</span></div>
+      </div>
+    ` : mode.id === "en" ? `
+      <p class="setup-copy">英文の会話文・短文を読み、各設問で5択から最も適切な選択肢を選びます。</p>
+    ` : `
+      <p class="setup-copy">表・円グラフ・棒グラフ・折れ線グラフから数値を読み取り、5択で解答します。</p>
+    `
+  );
 
   render(`
-    <h1>WEBテスト（玉手箱・C-GAB）模擬問題</h1>
-    <p class="muted">${totalDuration}分 / ${totalQs}問 — ${CHAIN_LABELS[state.uiMode]}${isCombo() ? `（${chain.length}セクション連続）` : ""}</p>
+    <div class="diagnosis-start">
+      <section class="setup-hero">
+        <div class="setup-hero-top">
+          <div>
+            <span class="setup-eyebrow">WEB TEST</span>
+            <h1 class="diagnosis-title">${escapeHtml(CHAIN_LABELS[state.uiMode])}</h1>
+          </div>
+        </div>
+        <div class="setup-metrics">
+          <div class="metric-tile">
+            <span class="metric-label">所要時間</span>
+            <span class="metric-value">${totalDuration}分</span>
+          </div>
+          <div class="metric-tile">
+            <span class="metric-label">設問数</span>
+            <span class="metric-value">${totalQs}問</span>
+          </div>
+        </div>
+      </section>
 
-    ${state.lastError ? `<div class="error">${escapeHtml(state.lastError)}</div>` : ""}
-    <div id="prefetchStatus"></div>
+      ${state.lastError ? `<div class="error">${escapeHtml(state.lastError)}</div>` : ""}
+      <div id="prefetchStatus"></div>
 
-    <div class="panel">
-      <h2>テスト開始</h2>
-      <div class="field">
-        <label>科目</label>
-        <div class="lang-toggle" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-          <button class="lang-btn ${state.uiMode==='ja'?'active':''}" data-ui="ja">言語</button>
-          <button class="lang-btn ${state.uiMode==='en'?'active':''}" data-ui="en">英語</button>
-          <button class="lang-btn ${state.uiMode==='num'?'active':''}" data-ui="num">計数</button>
-          <button class="lang-btn ${state.uiMode==='num_ja'?'active':''}" data-ui="num_ja" style="grid-column:1/3;font-size:15px">計数+言語</button>
-          <button class="lang-btn ${state.uiMode==='num_ja_en'?'active':''}" data-ui="num_ja_en" style="grid-column:3/4;font-size:14px;padding:18px 6px">計数+言語+英語</button>
+      <section class="setup-section">
+        <span class="setup-eyebrow">TEST MENU</span>
+        <h2>テスト選択</h2>
+        <div class="mode-card-grid">
+          ${modeCards}
+        </div>
+      </section>
+
+      <section class="setup-section">
+        <span class="setup-eyebrow">SESSION</span>
+        <h2>${isCombo() ? "受験セクション" : "問題形式"}</h2>
+        ${formatBody}
+      </section>
+
+      <div class="setup-action-row">
+        <p class="muted">次の問題へ進むと戻れません。</p>
+        <div class="row">
+          <button class="secondary" id="historyBtn">履歴 ${history.length}</button>
+          <button class="start-btn-big" id="startBtn">診断を開始</button>
         </div>
       </div>
-      <div class="row">
-        <button class="start-btn-big" id="startBtn">開始</button>
-        <button class="secondary" id="historyBtn">履歴 (${history.length})</button>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>${isCombo() ? "構成" : "問題形式"}</h2>
-      ${isCombo() ? `
-        <p style="font-size:14px">
-          以下のセクションを順に連続で受験します（各セクションに独立した制限時間）:
-        </p>
-        <ol style="font-size:14px;padding-left:20px;margin:8px 0">
-          ${chain.map(m => `<li><strong>${MODES[m].label}</strong>: ${MODES[m].durationMin}分 / ${MODES[m].numPassages * MODES[m].qsPerPassage}問</li>`).join("")}
-        </ol>
-      ` : (
-        mode.id === "ja" ? `
-          <p style="font-size:14px">
-            各長文につき4つの記述を読み、以下で判定:<br>
-            <strong>A.</strong> ${JA_CHOICES[0]}<br>
-            <strong>B.</strong> ${JA_CHOICES[1]}<br>
-            <strong>C.</strong> ${JA_CHOICES[2]}
-          </p>
-        ` : mode.id === "en" ? `
-          <p style="font-size:14px">
-            各長文につき3つの設問があり、それぞれ<strong>5択</strong>から1つ選びます。<br>
-            本文は英語の会話文・短文。設問と選択肢も英語、解説は日本語で出力されます。
-          </p>
-        ` : `
-          <p style="font-size:14px">
-            表・円/棒/折れ線グラフを読み取り、計算結果に最も近い選択肢（<strong>A〜Eの5択</strong>）を選びます。<br>
-            1問ごとに独立した図表が出題されます。
-          </p>
-        `
-      )}
-      <p class="muted" style="font-size:12px;margin-top:8px">※ 次の問題に進むと戻れません。</p>
     </div>
   `);
 
@@ -1311,20 +1791,24 @@ function renderResults(result) {
   const totalScore = combined.reduce((s, r) => s + r.score, 0);
   const totalAll = combined.reduce((s, r) => s + r.total, 0);
   const totalElapsed = combined.reduce((s, r) => s + r.elapsedSec, 0);
-  const pct = Math.round((totalScore / totalAll) * 100);
+  const pct = totalAll > 0 ? Math.round((totalScore / totalAll) * 100) : 0;
+  const answeredAll = combined.reduce((sum, r) => sum + (r.detail || []).filter(d => d.userIdx !== null && d.userIdx !== undefined).length, 0);
+  const completionPct = totalAll > 0 ? Math.round((answeredAll / totalAll) * 100) : 0;
   const m = Math.floor(totalElapsed / 60);
   const s = totalElapsed % 60;
 
   const sectionSummaries = combined.length > 1 ? `
-    <div class="panel">
+    <section class="section-score-panel">
+      <span class="setup-eyebrow">SECTION SCORES</span>
       <h2>セクション別スコア</h2>
       ${combined.map(r => `
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border)">
-          <span>${escapeHtml(MODES[r.mode].label)}</span>
-          <span>${r.score} / ${r.total} (${Math.round(r.score/r.total*100)}%)</span>
+        <div class="section-score-row">
+          <strong>${escapeHtml(MODES[r.mode].label)}</strong>
+          <div class="section-score-bar"><span style="width:${r.total > 0 ? Math.round(r.score / r.total * 100) : 0}%"></span></div>
+          <span>${r.score} / ${r.total}</span>
         </div>
       `).join("")}
-    </div>
+    </section>
   ` : "";
 
   // 全セクションのdetailを globalIdx オフセット付きで1つにまとめる
@@ -1339,32 +1823,73 @@ function renderResults(result) {
   });
 
   render(`
-    <h1>結果</h1>
-    <div class="panel">
-      <div class="score-big">${totalScore} / ${totalAll}</div>
-      <div class="score-sub">正答率 ${pct}% ・ 総所要 ${m}分${s}秒</div>
-    </div>
-    ${sectionSummaries}
-    ${sections.map((sec, si) => `
-      <div class="panel">
-        <h2>${combined.length > 1 ? `[${escapeHtml(sec.modeLabel)}] ` : ""}解説</h2>
-        <p class="muted" style="font-size:13px">各項目をタップで詳細を展開</p>
+    <div class="result-shell">
+      <section class="result-hero">
+        <div>
+          <span class="setup-eyebrow">RESULT</span>
+          <h1 class="result-title">結果</h1>
+          <p class="result-profile-line">${escapeHtml(CHAIN_LABELS[state.uiMode] || state.uiMode)} ・ ${totalScore} / ${totalAll} ・ 総所要 ${m}分${s}秒</p>
+        </div>
+        <div class="result-score-ring" style="--score:${pct}">
+          <div class="result-score-ring-inner">
+            <div>
+              <strong>${pct}%</strong>
+              <span>${totalScore} / ${totalAll}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="result-metrics">
+        <div class="metric-tile">
+          <span class="metric-label">正答率</span>
+          <span class="metric-value">${pct}%</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">回答完了</span>
+          <span class="metric-value">${completionPct}%</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">総所要</span>
+          <span class="metric-value">${m}分${s}秒</span>
+        </div>
+      </div>
+
+      ${sectionSummaries}
+      ${sections.map((sec, si) => `
+      <section class="explain-section">
+        <div class="explain-header">
+          <div>
+            <span class="explain-kicker">${combined.length > 1 ? escapeHtml(sec.modeLabel) : "ANSWER REVIEW"}</span>
+            <h2>${combined.length > 1 ? `${escapeHtml(sec.modeLabel)}の解説` : "解答・解説"}</h2>
+          </div>
+          <span class="muted">項目を選択して詳細を表示</span>
+        </div>
         ${sec.detail.map((d) => {
           const i = d._absIdx;
           return `
-          <div class="breakdown-item">
-            <div class="breakdown-head" data-toggle="${i}">
-              <div class="breakdown-title">
-                <strong>問${d.globalIdx+1}</strong>
-                <span class="muted" style="font-size:12px"> — ${d.isCorrect ? "正解" : "不正解"}</span>
-                <button type="button" class="result-view-btn">結果を見る</button>
+          <div class="explain-card">
+            <div class="explain-head" data-toggle="${i}">
+              <div class="question-type">
+                <span class="question-number">Q${d.globalIdx + 1}</span>
+                <div class="question-summary">
+                  <strong>${escapeHtml(d.statement)}</strong>
+                  <span>${d.userIdx !== null && d.userIdx !== undefined ? "回答済み" : "未回答"} / ${d.isCorrect ? "正解" : "不正解"}</span>
+                </div>
               </div>
-              <span class="badge ${d.isCorrect?"correct":"wrong"}">${d.isCorrect?"○":"×"}</span>
+              <span class="answer-state ${d.isCorrect ? "correct" : "wrong"}">${d.isCorrect ? "MATCH" : "REVIEW"}</span>
             </div>
             <div class="breakdown-detail" id="detail-${i}">
-              <p><strong>設問:</strong> ${escapeHtml(d.statement)}</p>
-              <p><strong>あなたの解答:</strong> ${d.userIdx !== null && d.userIdx !== undefined ? escapeHtml(d.choices[d.userIdx] || "") : "未回答"}</p>
-              <p><strong>正解:</strong> ${escapeHtml(d.choices[d.correctIdx] || "")}</p>
+              <div class="answer-detail-grid">
+                <div class="answer-box">
+                  <span>あなたの解答</span>
+                  <strong>${d.userIdx !== null && d.userIdx !== undefined ? escapeHtml(d.choices[d.userIdx] || "") : "未回答"}</strong>
+                </div>
+                <div class="answer-box">
+                  <span>正解</span>
+                  <strong>${escapeHtml(d.choices[d.correctIdx] || "")}</strong>
+                </div>
+              </div>
               <p><strong>解説:</strong> ${escapeHtml(d.explanation)}</p>
               <details style="margin-top:8px">
                 <summary class="muted">本文を見る</summary>
@@ -1376,11 +1901,12 @@ function renderResults(result) {
             </div>
           </div>`;
         }).join("")}
-      </div>
+      </section>
     `).join("")}
-    <div class="row">
-      <button id="restartBtn">もう一度</button>
+      <div class="row result-actions">
       <button class="secondary" id="homeBtn">ホームへ</button>
+        <button id="restartBtn">もう一度</button>
+      </div>
     </div>
   `);
   document.querySelectorAll("[data-toggle]").forEach(head => {
@@ -1535,6 +2061,7 @@ function finishCurrentSection() {
 
   // 全セクション完了 → 集計して結果表示
   const combined = state.chainResults;
+  const completedSessionId = state.sessionId || ((crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + "-" + Math.random().toString(16).slice(2)));
   const totalScore = combined.reduce((s, r) => s + r.score, 0);
   const totalAll = combined.reduce((s, r) => s + r.total, 0);
   const totalElapsed = combined.reduce((s, r) => s + r.elapsedSec, 0);
@@ -1543,103 +2070,191 @@ function finishCurrentSection() {
     language: state.uiMode,
     score: totalScore, total: totalAll, elapsedSec: totalElapsed
   });
-  saveTestResultsOffline(combined, state.uiMode);
-  // アンケートゲート: 結果表示前にアンケート必須
-  state._pendingResults = { combined };
-  renderSurvey();
+  saveTestResultsOffline(combined, state.uiMode, completedSessionId);
+  // プロフィール登録ゲート: 結果・解説表示前に同意付きプロフィール登録を必須化
+  state._pendingResults = { combined, sessionId: completedSessionId };
+  renderProfileGate();
 }
 
-function renderSurvey() {
+function renderProfileGate() {
   render(`
-    <h1>📝 アンケート（必須）</h1>
-    <p class="muted">結果を確認する前に、サービス改善のための簡単なアンケートにご協力ください。</p>
-    <div id="surveyError"></div>
+    <h1>プロフィール登録</h1>
+    <p class="muted">お疲れ様でした！解説を見る前にプロフィールを登録して、限定の企業スカウトを受け取りましょう。</p>
+    <div id="profileError"></div>
     <div class="panel">
-      <div class="field">
-        <label>① 全体の満足度（必須）</label>
-        <div class="row" style="gap:6px" id="ratingRow">
-          ${[1,2,3,4,5].map(n => `<button type="button" class="secondary survey-rate" data-name="rating" data-val="${n}" style="flex:1;min-width:48px">${n}</button>`).join("")}
+      <form id="profileGateForm" novalidate>
+        <div class="profile-grid">
+          <div class="field">
+            <label for="profileFullName">氏名（漢字）</label>
+            <input id="profileFullName" type="text" autocomplete="name" data-profile-required>
+          </div>
+          <div class="field">
+            <label for="profileKana">フリガナ</label>
+            <input id="profileKana" type="text" autocomplete="name" data-profile-required>
+          </div>
+          <div class="field">
+            <label for="profileUniversity">大学名</label>
+            <input id="profileUniversity" type="search" list="profileUniversityList" autocomplete="organization" placeholder="大学名を入力・検索" data-profile-required>
+            <datalist id="profileUniversityList"></datalist>
+            <div class="hint">候補から大学名を選択してください。</div>
+          </div>
+          <div class="field">
+            <label for="profileDepartment">学部</label>
+            <select id="profileDepartment" data-profile-required disabled>
+              <option value="">大学を選択してください</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="profileGradYear">卒業年度</label>
+            <select id="profileGradYear" data-profile-required>
+              <option value="">選択してください</option>
+              <option value="2027">2027年卒</option>
+              <option value="2028">2028年卒</option>
+              <option value="2029">2029年卒</option>
+              <option value="2030">2030年卒</option>
+              <option value="2031">2031年卒</option>
+              <option value="2032">2032年卒</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="profileEmail">メールアドレス</label>
+            <input id="profileEmail" type="email" autocomplete="email" inputmode="email" data-profile-required>
+          </div>
+          <div class="field full">
+            <label for="profilePhone">電話番号</label>
+            <input id="profilePhone" type="tel" autocomplete="tel" inputmode="tel" data-profile-required>
+          </div>
         </div>
-        <div class="hint">1=不満 / 5=非常に満足</div>
-      </div>
-      <div class="field">
-        <label>② 問題の難易度（必須）</label>
-        <div class="row" style="gap:6px">
-          ${[1,2,3,4,5].map(n => `<button type="button" class="secondary survey-rate" data-name="difficulty" data-val="${n}" style="flex:1;min-width:48px">${n}</button>`).join("")}
+
+        <div class="field" style="margin-top:18px">
+          <label>${escapeHtml(PROFILE_TERMS_TITLE)}</label>
+          <div class="privacy-excerpt terms-excerpt" tabindex="0">
+            ${renderLegalText(PROFILE_LEGAL_TEXT)}
+          </div>
         </div>
-        <div class="hint">1=易しすぎ / 5=難しすぎ</div>
-      </div>
-      <div class="field">
-        <label>③ 就活対策に役立った度合い（必須）</label>
-        <div class="row" style="gap:6px">
-          ${[1,2,3,4,5].map(n => `<button type="button" class="secondary survey-rate" data-name="usefulness" data-val="${n}" style="flex:1;min-width:48px">${n}</button>`).join("")}
+
+        <div class="consent-row">
+          <input id="profileConsent" type="checkbox">
+          <label for="profileConsent">正式会員登録規約およびプライバシーポリシー（提携企業への個人情報の第三者提供を含む）に同意する</label>
         </div>
-        <div class="hint">1=役立たず / 5=非常に役立った</div>
-      </div>
-      <div class="field">
-        <label>④ 今後も継続して使いたいですか？（必須）</label>
-        <div class="row" style="gap:6px">
-          <button type="button" class="secondary survey-rate" data-name="will_continue" data-val="true" style="flex:1">はい</button>
-          <button type="button" class="secondary survey-rate" data-name="will_continue" data-val="false" style="flex:1">いいえ</button>
+
+        <div class="row" style="margin-top:8px">
+          <button id="profileSubmit" type="submit" class="start-btn-big" style="font-size:15px;padding:12px 28px" disabled>解説を見る</button>
         </div>
-      </div>
-      <div class="field">
-        <label>⑤ ご意見・ご要望（任意）</label>
-        <textarea id="surveyComments" rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px"></textarea>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <button id="surveySubmit" class="start-btn-big" style="font-size:15px;padding:12px 28px">回答して結果を見る</button>
-      </div>
+      </form>
     </div>
   `);
 
-  const survey = { rating: null, difficulty: null, usefulness: null, will_continue: null };
-  document.querySelectorAll(".survey-rate").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const name = btn.dataset.name;
-      const val = btn.dataset.val;
-      survey[name] = (val === "true") ? true : (val === "false") ? false : Number(val);
-      // 同じグループの他ボタンを未選択スタイルに
-      document.querySelectorAll(`.survey-rate[data-name="${name}"]`).forEach(b => {
-        b.style.background = "";
-        b.style.color = "";
-        b.style.borderColor = "";
-      });
-      btn.style.background = "var(--accent)";
-      btn.style.color = "#fff";
-      btn.style.borderColor = "var(--accent)";
-    });
+  const form = document.getElementById("profileGateForm");
+  const requiredFields = Array.from(form.querySelectorAll("[data-profile-required]"));
+  const consent = document.getElementById("profileConsent");
+  const submitBtn = document.getElementById("profileSubmit");
+  const errEl = document.getElementById("profileError");
+  const universityEl = document.getElementById("profileUniversity");
+  const universityListEl = document.getElementById("profileUniversityList");
+  const departmentEl = document.getElementById("profileDepartment");
+  let schoolMaster = [];
+
+  const populateDepartments = (universityName, selectedDepartment = "") => {
+    const school = getSchoolByName(schoolMaster, universityName.trim());
+    const faculties = school?.faculties || [];
+    departmentEl.disabled = !school;
+    departmentEl.innerHTML = school
+      ? renderDepartmentSelectOptions(faculties, selectedDepartment)
+      : '<option value="">大学名を候補から選択してください</option>';
+  };
+
+  const isFormReady = () =>
+    requiredFields.every(el =>
+      el.value.trim() &&
+      (el.type !== "email" || el.checkValidity()) &&
+      (el.id !== "profileUniversity" || !!getSchoolByName(schoolMaster, el.value.trim()))
+    ) &&
+    consent.checked;
+
+  const syncSubmit = () => {
+    submitBtn.disabled = !isFormReady();
+    errEl.innerHTML = "";
+  };
+
+  requiredFields.forEach(el => {
+    el.addEventListener("input", syncSubmit);
+    el.addEventListener("change", syncSubmit);
+  });
+  universityEl.addEventListener("input", () => {
+    populateDepartments(universityEl.value);
+    syncSubmit();
+  });
+  universityEl.addEventListener("change", () => {
+    populateDepartments(universityEl.value);
+    syncSubmit();
+  });
+  consent.addEventListener("change", syncSubmit);
+  syncSubmit();
+
+  Promise.all([
+    window.AuthApp?.getSchoolMaster?.() || Promise.resolve([]),
+    window.AuthApp?.getUser?.() || Promise.resolve(null)
+  ]).then(([master, user]) => {
+    schoolMaster = Array.isArray(master) ? master : [];
+    const selectedUniversity = user?.university || "";
+    universityListEl.innerHTML = renderUniversitySearchOptions(schoolMaster);
+    universityEl.value = getSchoolByName(schoolMaster, selectedUniversity) ? selectedUniversity : "";
+    populateDepartments(universityEl.value, user?.department || "");
+    if (user?.email && !document.getElementById("profileEmail").value) document.getElementById("profileEmail").value = user.email;
+    if (user?.graduation_year && !document.getElementById("profileGradYear").value) document.getElementById("profileGradYear").value = user.graduation_year;
+    syncSubmit();
+  }).catch(() => {
+    universityListEl.innerHTML = "";
+    universityEl.placeholder = "大学マスターを読み込めませんでした";
+    departmentEl.innerHTML = '<option value="">大学を選択してください</option>';
+    departmentEl.disabled = true;
+    syncSubmit();
   });
 
-  document.getElementById("surveySubmit").addEventListener("click", async () => {
-    const errEl = document.getElementById("surveyError");
-    if (survey.rating === null || survey.difficulty === null || survey.usefulness === null || survey.will_continue === null) {
-      errEl.innerHTML = '<div class="error">①〜④はすべて必須です。</div>';
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!isFormReady()) return;
+    const pending = state._pendingResults;
+    if (!pending?.combined) {
+      errEl.innerHTML = '<div class="error">テスト結果の取得に失敗しました。もう一度お試しください。</div>';
       window.scrollTo(0, 0);
       return;
     }
-    survey.comments = document.getElementById("surveyComments").value.trim() || null;
 
-    window.AuthApp?.saveSurvey?.({
-      user_id: (await window.AuthApp?.getUser?.())?.id || null,
-      session_id: state.sessionId || null,
-      rating: survey.rating,
-      difficulty: survey.difficulty,
-      usefulness: survey.usefulness,
-      will_continue: survey.will_continue,
-      comments: survey.comments
-    });
+    const profile = {
+      full_name: document.getElementById("profileFullName").value.trim(),
+      furigana: document.getElementById("profileKana").value.trim(),
+      university: document.getElementById("profileUniversity").value.trim(),
+      department: document.getElementById("profileDepartment").value.trim(),
+      graduation_year: document.getElementById("profileGradYear").value,
+      email: document.getElementById("profileEmail").value.trim().toLowerCase(),
+      phone: document.getElementById("profilePhone").value.trim()
+    };
 
-    const pending = state._pendingResults;
-    state._pendingResults = null;
-    renderResults(pending);
+    const payload = buildProfilePayload(profile, pending.combined, state.uiMode, pending.sessionId);
+    submitBtn.disabled = true;
+    submitBtn.textContent = "保存中...";
+
+    try {
+      if (!window.AuthApp?.saveProfileAndResults) throw new Error("保存機能を読み込めませんでした");
+      await window.AuthApp.saveProfileAndResults(payload);
+      const result = { combined: pending.combined };
+      state._pendingResults = null;
+      renderResults(result);
+    } catch (err) {
+      submitBtn.textContent = "解説を見る";
+      submitBtn.disabled = false;
+      errEl.innerHTML = `<div class="error">${escapeHtml(err.message || String(err))}</div>`;
+      window.scrollTo(0, 0);
+    }
   });
 }
 
 // 各セクションの結果 + 全回答詳細をこのブラウザ内に保存
-async function saveTestResultsOffline(sections, uiMode) {
+async function saveTestResultsOffline(sections, uiMode, sessionId) {
   const user = await window.AuthApp?.getUser?.();
-  const sessionId = state.sessionId || crypto?.randomUUID?.() || `local_${Date.now()}`;
+  const attemptSessionId = sessionId || state.sessionId || crypto?.randomUUID?.() || `local_${Date.now()}`;
   const qsPerPassageMap = { ja: 4, en: 3, num: 1 };
   const answerRows = [];
 
@@ -1664,7 +2279,7 @@ async function saveTestResultsOffline(sections, uiMode) {
   window.AuthApp?.saveAttempt?.({
     user_id: user?.id || null,
     user_email: user?.email || null,
-    session_id: sessionId,
+    session_id: attemptSessionId,
     ui_mode: uiMode,
     sections: sections.map(s => ({
       mode: s.mode,
@@ -1725,32 +2340,6 @@ function resetAndSetup() {
   renderSetup();
 }
 
-/* 認証バー表示（非ブロッキング） */
-(async function renderAuthBar() {
-  const statusEl = document.getElementById("authStatus");
-  const linksEl = document.getElementById("authLinks");
-  if (!window.AuthApp) {
-    statusEl.textContent = "オフライン";
-    return;
-  }
-  async function refresh() {
-    const u = await window.AuthApp.getUser();
-    if (u) {
-      const name = u.nickname || u.email;
-      statusEl.innerHTML = `こんにちは、${escapeHtml(name)} さん（ローカル保存）`;
-      linksEl.innerHTML = `<button class="auth-btn" id="logoutLink">ログアウト</button>`;
-      document.getElementById("logoutLink").addEventListener("click", async (e) => {
-        e.preventDefault();
-        await window.AuthApp.signOut();
-        location.reload();
-      });
-    } else {
-      statusEl.textContent = "未ログイン（外部送信なし）";
-      linksEl.innerHTML = `<a href="/login" class="auth-btn">ログイン</a><a href="/signup" class="auth-btn primary">新規登録</a>`;
-    }
-  }
-  refresh();
-})();
 
 /* 起動: 認証は任意。API や外部サービスには接続しない。 */
 (async function bootstrap() {
