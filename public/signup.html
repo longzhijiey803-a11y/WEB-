@@ -261,7 +261,7 @@ document.getElementById("f").addEventListener("submit", async (ev) => {
   try {
     await window.AuthApp.register(payload);
     showMsg("ok", "✓ 登録が完了しました。テストページへ移動します…");
-    setTimeout(() => { location.href = "/"; }, 1200);
+    setTimeout(() => { location.href = "index.html"; }, 1200);
   } catch (e) {
     showMsg("error", "登録失敗: " + (e.message || e));
     btn.disabled = false;

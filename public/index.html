@@ -50,6 +50,21 @@
   button.secondary:hover:not(:disabled) { background: #f0f0f5; }
   button.ghost { background: transparent; color: var(--muted); border: none; padding: 6px 12px; }
   .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .link-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    background: #fff;
+  }
+  .link-button:hover { background: #f0f0f5; }
   .field { margin-bottom: 16px; }
   .error { background: #fff2f2; color: var(--wrong); padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
   .notice { background: #e8f2ff; color: var(--accent); padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
@@ -1005,6 +1020,8 @@ const state = {
   timeRemaining: 0,
   timerInterval: null,
   startTime: null,
+  analyticsStarted: false,
+  questionViewTracked: {},
   lastError: null,
   _pendingResults: null,
 };
@@ -1169,6 +1186,58 @@ function saveHistory(entry) {
   const list = loadHistory();
   list.unshift(entry);
   localStorage.setItem("history", JSON.stringify(list.slice(0, 20)));
+}
+function getChainTotalQuestions() {
+  return (state.chain || []).reduce((sum, modeId) => {
+    const m = MODES[modeId];
+    return sum + (m ? m.numPassages * m.qsPerPassage : 0);
+  }, 0);
+}
+function getChainQuestionOffset() {
+  return (state.chain || []).slice(0, state.chainIdx).reduce((sum, modeId) => {
+    const m = MODES[modeId];
+    return sum + (m ? m.numPassages * m.qsPerPassage : 0);
+  }, 0);
+}
+function getCurrentQuestionNumber() {
+  return getChainQuestionOffset() + state.currentIdx + 1;
+}
+function getAnsweredCountAcrossChain() {
+  const completed = (state.chainResults || []).reduce((sum, section) =>
+    sum + (section.detail || []).filter(d => d.userIdx !== null && d.userIdx !== undefined).length, 0);
+  return completed + Object.keys(state.answers || {}).length;
+}
+function getCompletionPercent(answeredCount = getAnsweredCountAcrossChain()) {
+  const total = getChainTotalQuestions();
+  return total > 0 ? Math.round((answeredCount / total) * 100) : 0;
+}
+function trackProgress(eventType, payload = {}) {
+  if (!state.sessionId || !window.AuthApp?.updateTestProgress) return;
+  window.AuthApp.updateTestProgress({
+    event_type: eventType,
+    session_id: state.sessionId,
+    ui_mode: state.uiMode,
+    ui_label: CHAIN_LABELS[state.uiMode] || state.uiMode,
+    mode: state.language,
+    mode_label: MODES[state.language]?.label || state.language,
+    current_section_index: state.chainIdx + 1,
+    section_count: state.chain?.length || 1,
+    current_question_number: getCurrentQuestionNumber(),
+    section_question_number: state.currentIdx + 1,
+    total_questions: getChainTotalQuestions(),
+    answered_count: getAnsweredCountAcrossChain(),
+    completion_percent: getCompletionPercent(),
+    ...payload
+  });
+}
+function trackQuestionView(question) {
+  const key = `${state.chainIdx}:${state.currentIdx}`;
+  if (state.questionViewTracked[key]) return;
+  state.questionViewTracked[key] = true;
+  trackProgress("question_view", {
+    question_number: getCurrentQuestionNumber(),
+    question_text: String(question?.statement || "").slice(0, 240)
+  });
 }
 function buildResultSummary(sections, uiMode, sessionId) {
   const totalScore = sections.reduce((sum, s) => sum + s.score, 0);
@@ -1561,6 +1630,9 @@ function renderSetup() {
       <div class="setup-action-row">
         <p class="muted">次の問題へ進むと戻れません。</p>
         <div class="row">
+          <a class="link-button" href="login.html">ログイン</a>
+          <a class="link-button" href="signup.html">会員登録</a>
+          <a class="link-button" href="admin.html">管理者</a>
           <button class="secondary" id="historyBtn">履歴 ${history.length}</button>
           <button class="start-btn-big" id="startBtn">診断を開始</button>
         </div>
@@ -1595,6 +1667,8 @@ function setLanguage(ui) {
   state.testStarted = false;
   state.answers = {};
   state.currentIdx = 0;
+  state.analyticsStarted = false;
+  state.questionViewTracked = {};
   state.timeRemaining = getDurationSec();
   renderSetup();
 }
@@ -1760,15 +1834,27 @@ function renderTest() {
       state._lastRenderedIdx = state.currentIdx;
     }
   }
+  trackQuestionView(question);
 
   document.querySelectorAll(".choice-row").forEach(row => {
     row.addEventListener("click", () => {
       if (state.answers[state.currentIdx] !== undefined) return;
       const idx = parseInt(row.dataset.idx, 10);
       state.answers[state.currentIdx] = idx;
+      let timeSpentSec = null;
       if (state.questionStartTs) {
-        state.answerTimes[state.currentIdx] = Math.max(1, Math.round((Date.now() - state.questionStartTs) / 1000));
+        timeSpentSec = Math.max(1, Math.round((Date.now() - state.questionStartTs) / 1000));
+        state.answerTimes[state.currentIdx] = timeSpentSec;
       }
+      trackProgress("answer", {
+        question_number: getCurrentQuestionNumber(),
+        selected_index: idx,
+        correct_index: question.correct_index,
+        is_correct: idx === question.correct_index,
+        time_spent_sec: timeSpentSec,
+        answered_count: getAnsweredCountAcrossChain(),
+        completion_percent: getCompletionPercent()
+      });
       if (idx === question.correct_index) playCorrectSound();
       renderTest();
     });
@@ -1777,6 +1863,10 @@ function renderTest() {
     if (isLast) {
       if (confirm("採点しますか？")) finishTest();
     } else {
+      trackProgress("next_question", {
+        from_question_number: getCurrentQuestionNumber(),
+        to_question_number: getCurrentQuestionNumber() + 1
+      });
       state.currentIdx += 1;
       renderTest();
     }
@@ -1963,6 +2053,25 @@ async function startTest() {
     // chain 全体で 1 セッション ID
     state.sessionId = (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + "-" + Math.random().toString(16).slice(2));
   }
+  if (state.chainIdx === 0 && !state.analyticsStarted) {
+    state.analyticsStarted = true;
+    state.questionViewTracked = {};
+    window.AuthApp?.startTestAnalytics?.({
+      session_id: state.sessionId,
+      ui_mode: state.uiMode,
+      ui_label: CHAIN_LABELS[state.uiMode] || state.uiMode,
+      chain: state.chain.slice(),
+      total_questions: getChainTotalQuestions(),
+      current_question_number: 1,
+      answered_count: 0,
+      completion_percent: 0
+    });
+  } else {
+    trackProgress("section_start", {
+      current_question_number: getCurrentQuestionNumber(),
+      section_question_number: 1
+    });
+  }
   state.currentIdx = 0;
   state.timeRemaining = getDurationSec();
 
@@ -2034,12 +2143,20 @@ function finishCurrentSection() {
       correctIdx: q.correct_index,
       userIdx: user !== undefined ? user : null,
       isCorrect,
+      timeSpentSec: state.answerTimes?.[globalIdx] || null,
       explanation: q.explanation,
       isNum: mode.id === "num"
     });
   }
   const sectionResult = { mode: state.language, score, total: totalQ, elapsedSec, detail };
   state.chainResults.push(sectionResult);
+  trackProgress("section_complete", {
+    section_mode: state.language,
+    section_score: score,
+    section_total: totalQ,
+    section_accuracy_percent: totalQ > 0 ? Math.round((score / totalQ) * 100) : 0,
+    section_elapsed_sec: elapsedSec
+  });
 
   if (state.chainIdx + 1 < state.chain.length) {
     // 次のセクションへ遷移
@@ -2065,10 +2182,23 @@ function finishCurrentSection() {
   const totalScore = combined.reduce((s, r) => s + r.score, 0);
   const totalAll = combined.reduce((s, r) => s + r.total, 0);
   const totalElapsed = combined.reduce((s, r) => s + r.elapsedSec, 0);
+  const resultSummary = buildResultSummary(combined, state.uiMode, completedSessionId);
   saveHistory({
     date: new Date().toISOString(),
     language: state.uiMode,
     score: totalScore, total: totalAll, elapsedSec: totalElapsed
+  });
+  window.AuthApp?.completeTestAnalytics?.({
+    ...resultSummary,
+    session_id: completedSessionId,
+    total_questions: totalAll,
+    answered_count: combined.reduce((sum, r) =>
+      sum + (r.detail || []).filter(d => d.userIdx !== null && d.userIdx !== undefined).length, 0),
+    completion_percent: totalAll > 0 ? Math.round((combined.reduce((sum, r) =>
+      sum + (r.detail || []).filter(d => d.userIdx !== null && d.userIdx !== undefined).length, 0) / totalAll) * 100) : 0,
+    elapsed_sec: totalElapsed,
+    score: totalScore,
+    accuracy_percent: totalAll > 0 ? Math.round((totalScore / totalAll) * 100) : 0
   });
   saveTestResultsOffline(combined, state.uiMode, completedSessionId);
   // プロフィール登録ゲート: 結果・解説表示前に同意付きプロフィール登録を必須化
@@ -2077,6 +2207,10 @@ function finishCurrentSection() {
 }
 
 function renderProfileGate() {
+  window.AuthApp?.trackEvent?.("profile_gate_view", {
+    session_id: state._pendingResults?.sessionId || null,
+    ui_mode: state.uiMode
+  });
   render(`
     <h1>プロフィール登録</h1>
     <p class="muted">お疲れ様でした！解説を見る前にプロフィールを登録して、限定の企業スカウトを受け取りましょう。</p>
@@ -2271,7 +2405,7 @@ async function saveTestResultsOffline(sections, uiMode, sessionId) {
         selected_index: (d.userIdx === null || d.userIdx === undefined) ? null : d.userIdx,
         correct_index: d.correctIdx,
         is_correct: !!d.isCorrect,
-        time_spent_sec: ti[d.globalIdx] || null
+        time_spent_sec: d.timeSpentSec || ti[d.globalIdx] || null
       });
     }
   }
@@ -2335,10 +2469,34 @@ function resetAndSetup() {
   state.testStarted = false;
   state.answers = {};
   state.currentIdx = 0;
+  state.analyticsStarted = false;
+  state.questionViewTracked = {};
   state.timeRemaining = getDurationSec();
   state.lastError = null;
   renderSetup();
 }
+
+window.addEventListener("pagehide", () => {
+  if (!state.sessionId || !state.analyticsStarted) return;
+  window.AuthApp?.abandonTestAnalytics?.({
+    reason: "pagehide",
+    session_id: state.sessionId,
+    ui_mode: state.uiMode,
+    mode: state.language,
+    current_question_number: getCurrentQuestionNumber(),
+    section_question_number: state.currentIdx + 1,
+    total_questions: getChainTotalQuestions(),
+    answered_count: getAnsweredCountAcrossChain(),
+    completion_percent: getCompletionPercent()
+  });
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "hidden" || !state.sessionId || !state.analyticsStarted) return;
+  trackProgress("page_hidden", {
+    reason: "visibility_hidden"
+  });
+});
 
 
 /* 起動: 認証は任意。API や外部サービスには接続しない。 */

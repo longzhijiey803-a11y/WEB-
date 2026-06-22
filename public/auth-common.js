@@ -13,8 +13,15 @@
     surveys: "webtest_offline_surveys_v1",
     consents: "webtest_offline_consents_v1",
     pendingProfiles: "pending_user_profiles",
-    schoolMaster: "webtest_school_master_v1"
+    schoolMaster: "webtest_school_master_v1",
+    analyticsEvents: "webtest_offline_analytics_events_v1",
+    testSessions: "webtest_offline_test_sessions_v1",
+    activeTest: "webtest_offline_active_test_v1",
+    adminPassHash: "webtest_offline_admin_pass_hash_v1",
+    adminSession: "webtest_offline_admin_session_v1"
   };
+  const MAX_ANALYTICS_EVENTS = 5000;
+  const MAX_TEST_SESSIONS = 1000;
 
   const COMMON_FACULTIES = [
     "文学部",
@@ -295,11 +302,91 @@
     writeJson(KEYS.session, session);
   }
 
-  async function currentUser() {
+  function currentUserSync() {
     const session = getSession();
     if (!session?.userId) return null;
     const user = getUsers().find(u => u.id === session.userId);
     return publicUser(user);
+  }
+
+  async function currentUser() {
+    return currentUserSync();
+  }
+
+  function getAnalyticsEvents() {
+    return readJson(KEYS.analyticsEvents, []);
+  }
+
+  function getTestSessions() {
+    return readJson(KEYS.testSessions, []);
+  }
+
+  function saveTestSessions(rows) {
+    writeJson(KEYS.testSessions, rows.slice(-MAX_TEST_SESSIONS));
+  }
+
+  function appendAnalyticsEvent(eventType, payload = {}) {
+    const user = currentUserSync();
+    const safePayload = payload && typeof payload === "object" ? payload : { value: payload };
+    const event = {
+      id: uuid(),
+      event_type: String(eventType || "event"),
+      created_at: nowIso(),
+      user_id: safePayload.user_id ?? user?.id ?? null,
+      user_email: safePayload.user_email ?? user?.email ?? null,
+      session_id: safePayload.session_id || null,
+      ui_mode: safePayload.ui_mode || null,
+      mode: safePayload.mode || null,
+      question_number: safePayload.question_number ?? safePayload.current_question_number ?? null,
+      payload: safePayload
+    };
+    const rows = getAnalyticsEvents();
+    rows.push(event);
+    writeJson(KEYS.analyticsEvents, rows.slice(-MAX_ANALYTICS_EVENTS));
+    return event;
+  }
+
+  function upsertTestSession(sessionPatch) {
+    if (!sessionPatch?.session_id) return null;
+    const rows = getTestSessions();
+    const idx = rows.findIndex(row => row.session_id === sessionPatch.session_id);
+    const user = currentUserSync();
+    const next = {
+      id: idx >= 0 ? rows[idx].id : uuid(),
+      user_id: sessionPatch.user_id ?? (idx >= 0 ? rows[idx].user_id : user?.id ?? null),
+      user_email: sessionPatch.user_email ?? (idx >= 0 ? rows[idx].user_email : user?.email ?? null),
+      started_at: sessionPatch.started_at || (idx >= 0 ? rows[idx].started_at : nowIso()),
+      updated_at: nowIso(),
+      ...((idx >= 0 && rows[idx]) || {}),
+      ...sessionPatch
+    };
+    if (idx >= 0) rows[idx] = next;
+    else rows.push(next);
+    saveTestSessions(rows);
+    return next;
+  }
+
+  function clearActiveTest() {
+    localStorage.removeItem(KEYS.activeTest);
+  }
+
+  function closeActiveTest(reason = "unknown", extra = {}) {
+    const active = readJson(KEYS.activeTest, null);
+    if (!active?.session_id || active.status !== "active") return null;
+    const closed = upsertTestSession({
+      ...active,
+      ...extra,
+      status: "abandoned",
+      abandon_reason: reason,
+      abandoned_at: nowIso(),
+      updated_at: nowIso()
+    });
+    clearActiveTest();
+    appendAnalyticsEvent("test_abandon", {
+      ...closed,
+      reason
+    });
+    return closed;
   }
 
   function buildSchoolMaster() {
@@ -358,6 +445,13 @@
         user_agent: navigator.userAgent.slice(0, 300)
       }));
       setSession({ userId: user.id, signedInAt: nowIso() });
+      appendAnalyticsEvent("sign_up", {
+        user_id: user.id,
+        user_email: user.email,
+        university: user.university,
+        graduation_year: user.graduation_year,
+        first_choice_industry: user.first_choice_industry
+      });
       return publicUser(user);
     },
 
@@ -370,6 +464,10 @@
       users[idx].last_sign_in_at = nowIso();
       saveUsers(users);
       setSession({ userId: users[idx].id, signedInAt: nowIso() });
+      appendAnalyticsEvent("login", {
+        user_id: users[idx].id,
+        user_email: users[idx].email
+      });
       return publicUser(users[idx]);
     },
 
@@ -389,19 +487,34 @@
     },
 
     async signOut() {
+      appendAnalyticsEvent("logout", {});
       localStorage.removeItem(KEYS.session);
     },
 
     saveAttempt(attempt) {
       const rows = readJson(KEYS.results, []);
-      rows.push({ id: uuid(), saved_at: nowIso(), ...attempt });
+      const entry = { id: uuid(), saved_at: nowIso(), ...attempt };
+      rows.push(entry);
       writeJson(KEYS.results, rows);
+      appendAnalyticsEvent("attempt_saved", {
+        session_id: attempt?.session_id || null,
+        ui_mode: attempt?.ui_mode || null,
+        section_count: attempt?.sections?.length || 0,
+        answer_count: attempt?.answers?.length || 0
+      });
+      return entry;
     },
 
     saveSurvey(survey) {
       const rows = readJson(KEYS.surveys, []);
-      rows.push({ id: uuid(), submitted_at: nowIso(), ...survey });
+      const entry = { id: uuid(), submitted_at: nowIso(), ...survey };
+      rows.push(entry);
       writeJson(KEYS.surveys, rows);
+      appendAnalyticsEvent("survey_submit", {
+        survey_id: entry.id,
+        session_id: survey?.session_id || null
+      });
+      return entry;
     },
 
     async saveProfileAndResults(data) {
@@ -414,6 +527,17 @@
       };
       rows.push(entry);
       writeJson(KEYS.pendingProfiles, rows);
+      appendAnalyticsEvent("profile_submit", {
+        session_id: data?.test_result?.session_id || null,
+        ui_mode: data?.test_result?.ui_mode || null,
+        profile_email: data?.profile?.email || null,
+        university: data?.profile?.university || null,
+        department: data?.profile?.department || null,
+        graduation_year: data?.profile?.graduation_year || null,
+        score: data?.test_result?.score ?? null,
+        total_questions: data?.test_result?.total_questions ?? null,
+        accuracy_percent: data?.test_result?.accuracy_percent ?? null
+      });
 
       // Future online submit:
       // await fetch("/api/submit", {
@@ -425,6 +549,110 @@
       return entry;
     },
 
+    trackEvent(eventType, payload = {}) {
+      return appendAnalyticsEvent(eventType, payload);
+    },
+
+    startTestAnalytics(payload = {}) {
+      const active = readJson(KEYS.activeTest, null);
+      if (active?.session_id && active.status === "active" && active.session_id !== payload.session_id) {
+        closeActiveTest("new_test_started", { next_session_id: payload.session_id || null });
+      }
+      const user = currentUserSync();
+      const startedAt = nowIso();
+      const session = upsertTestSession({
+        status: "active",
+        session_id: payload.session_id,
+        user_id: user?.id || null,
+        user_email: user?.email || null,
+        ui_mode: payload.ui_mode || null,
+        ui_label: payload.ui_label || null,
+        chain: payload.chain || [],
+        total_questions: payload.total_questions || 0,
+        current_question_number: payload.current_question_number || 1,
+        answered_count: payload.answered_count || 0,
+        completion_percent: payload.completion_percent || 0,
+        started_at: startedAt,
+        updated_at: startedAt,
+        user_agent: navigator.userAgent.slice(0, 300)
+      });
+      writeJson(KEYS.activeTest, session);
+      appendAnalyticsEvent("test_start", session);
+      return session;
+    },
+
+    updateTestProgress(payload = {}) {
+      const active = readJson(KEYS.activeTest, null);
+      if (!payload.session_id && !active?.session_id) return null;
+      const sessionId = payload.session_id || active.session_id;
+      const merged = upsertTestSession({
+        ...(active || {}),
+        ...payload,
+        session_id: sessionId,
+        status: payload.status || active?.status || "active",
+        updated_at: nowIso()
+      });
+      if (merged?.status === "active") writeJson(KEYS.activeTest, merged);
+      appendAnalyticsEvent(payload.event_type || "test_progress", {
+        ...payload,
+        session_id: sessionId
+      });
+      return merged;
+    },
+
+    completeTestAnalytics(payload = {}) {
+      const active = readJson(KEYS.activeTest, null);
+      const sessionId = payload.session_id || active?.session_id;
+      if (!sessionId) return null;
+      const completed = upsertTestSession({
+        ...(active || {}),
+        ...payload,
+        session_id: sessionId,
+        status: "completed",
+        completed_at: payload.completed_at || nowIso(),
+        updated_at: nowIso()
+      });
+      clearActiveTest();
+      appendAnalyticsEvent("test_complete", completed);
+      return completed;
+    },
+
+    abandonTestAnalytics(payload = {}) {
+      return closeActiveTest(payload.reason || "unknown", payload);
+    },
+
+    getAdminState() {
+      return {
+        has_passcode: !!localStorage.getItem(KEYS.adminPassHash),
+        unlocked: !!readJson(KEYS.adminSession, null)?.unlocked
+      };
+    },
+
+    async setAdminPasscode(passcode) {
+      const value = String(passcode || "");
+      if (value.length < 8) throw new Error("管理者キーは8文字以上にしてください");
+      const hash = await sha256(value);
+      localStorage.setItem(KEYS.adminPassHash, hash);
+      writeJson(KEYS.adminSession, { unlocked: true, unlocked_at: nowIso() });
+      appendAnalyticsEvent("admin_passcode_set", {});
+      return true;
+    },
+
+    async unlockAdmin(passcode) {
+      const expected = localStorage.getItem(KEYS.adminPassHash);
+      if (!expected) throw new Error("管理者キーが未設定です");
+      const actual = await sha256(String(passcode || ""));
+      if (actual !== expected) throw new Error("管理者キーが違います");
+      writeJson(KEYS.adminSession, { unlocked: true, unlocked_at: nowIso() });
+      appendAnalyticsEvent("admin_unlock", {});
+      return true;
+    },
+
+    lockAdmin() {
+      localStorage.removeItem(KEYS.adminSession);
+      appendAnalyticsEvent("admin_lock", {});
+    },
+
     exportLocalData() {
       return {
         users: getUsers().map(publicUser),
@@ -433,7 +661,10 @@
         surveys: readJson(KEYS.surveys, []),
         consents: readJson(KEYS.consents, []),
         pending_user_profiles: readJson(KEYS.pendingProfiles, []),
-        school_master: buildSchoolMaster()
+        school_master: buildSchoolMaster(),
+        analytics_events: getAnalyticsEvents(),
+        test_sessions: getTestSessions(),
+        active_test: readJson(KEYS.activeTest, null)
       };
     },
 
