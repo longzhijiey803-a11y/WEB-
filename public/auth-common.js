@@ -505,6 +505,18 @@
       return entry;
     },
 
+    getAttempts() {
+      const user = currentUserSync();
+      const rows = readJson(KEYS.results, []);
+      if (!user?.id && !user?.email) return [];
+      return rows
+        .filter(row =>
+          (user?.id && row.user_id === user.id) ||
+          (user?.email && row.user_email === user.email)
+        )
+        .sort((a, b) => String(b.saved_at || "").localeCompare(String(a.saved_at || "")));
+    },
+
     saveSurvey(survey) {
       const rows = readJson(KEYS.surveys, []);
       const entry = { id: uuid(), submitted_at: nowIso(), ...survey };

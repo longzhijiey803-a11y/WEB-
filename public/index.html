@@ -243,6 +243,69 @@
   .history-item:first-child { border-top: none; }
 
   .diagnosis-start { display: grid; gap: 16px; }
+  .entry-choice {
+    display: grid;
+    gap: 16px;
+    min-height: calc(100vh - 112px);
+    align-content: center;
+  }
+  .entry-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .entry-card {
+    width: 100%;
+    min-height: 190px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+    color: var(--text);
+    text-align: left;
+    box-shadow: var(--shadow);
+  }
+  .entry-card:hover:not(:disabled) { background: #f8fbff; border-color: var(--accent); }
+  .entry-card strong { display: block; font-size: 24px; line-height: 1.25; }
+  .entry-card span { display: block; color: var(--muted); font-size: 14px; font-weight: 400; }
+  .entry-benefit {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 12px 16px;
+    border: 2px solid var(--wrong);
+    border-radius: 8px;
+    background: #fff5f5;
+    color: var(--wrong);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.6;
+  }
+  .entry-benefit b {
+    flex: 0 0 auto;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--wrong);
+    color: #fff;
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  .auth-shell { max-width: 520px; margin: 56px auto 0; }
+  .account-note {
+    border: 1px solid #cde2ff;
+    background: #f0f7ff;
+    color: #0b5cad;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
   .setup-hero {
     background: linear-gradient(135deg, #ffffff 0%, #f7fbff 52%, #f7f2ff 100%);
     border: 1px solid #e7e9f0;
@@ -474,6 +537,21 @@
   .answer-box span { display: block; color: var(--muted); font-size: 12px; }
   .answer-box strong { display: block; margin-top: 4px; font-size: 13px; overflow-wrap: anywhere; }
   .result-actions { justify-content: flex-end; }
+  .trend-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+  }
+  .trend-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .trend-delta.up { color: var(--correct); }
+  .trend-delta.down { color: var(--wrong); }
+  .trend-delta.flat { color: var(--muted); }
 
   .profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
   .profile-grid .field { margin-bottom: 0; }
@@ -525,7 +603,9 @@
     .setup-metrics,
     .result-metrics,
     .mode-card-grid,
-    .answer-detail-grid { grid-template-columns: 1fr; }
+    .answer-detail-grid,
+    .entry-grid,
+    .trend-grid { grid-template-columns: 1fr; }
     .diagnosis-start .lang-btn.mode-card { min-height: 126px; }
     .diagnosis-start .start-btn-big { width: 100%; margin-top: 12px; }
     .result-hero { grid-template-columns: 1fr; }
@@ -535,6 +615,160 @@
     .answer-state { width: max-content; }
     .result-actions { justify-content: stretch; }
     .result-actions button { width: 100%; }
+  }
+
+  /* 評価パネルの共通スタイル */
+  .evaluation-panel {
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .evaluation-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .target-companies {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+  .target-companies strong {
+    color: inherit;
+    font-size: 26px;
+    text-shadow: 0 0 10px rgba(255,255,255,0.5);
+  }
+  .evaluation-comments {
+    text-align: left;
+    max-width: 600px;
+    margin: 0 auto;
+    font-size: 14px;
+    line-height: 1.8;
+  }
+  .evaluation-comments p {
+    margin: 4px 0;
+  }
+
+  /* 85%以上：レインボー・ゴールドグラデーション 射倖心を煽る演出 */
+  .evaluation-panel.super-excellent {
+    background: linear-gradient(135deg, #ffe066 0%, #fcc419 30%, #ff8787 50%, #da77f2 70%, #74c0fc 100%);
+    background-size: 300% 300%;
+    animation: rainbowShift 6s ease infinite, superPulse 2s infinite alternate;
+    border: 2px solid #ffd700;
+    box-shadow: 0 0 25px rgba(253, 196, 25, 0.6), inset 0 0 15px rgba(255,255,255,0.6);
+    color: #fff;
+  }
+  .evaluation-panel.super-excellent .evaluation-title {
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .evaluation-panel.super-excellent .target-companies {
+    color: #ffffff;
+    text-shadow: 0 0 15px rgba(255,255,255,0.8), 0 2px 4px rgba(0,0,0,0.3);
+  }
+  .evaluation-panel.super-excellent .evaluation-comments {
+    background: rgba(0, 0, 0, 0.65);
+    padding: 16px;
+    border-radius: 8px;
+    color: #fff;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+  }
+
+  /* 80%以上：ゴールデン・プラチナ 射倖心を煽る演出 */
+  .evaluation-panel.excellent {
+    background: linear-gradient(135deg, #ffe066 0%, #ffd43b 35%, #ffd43b 70%, #ffe066 100%);
+    background-size: 200% 200%;
+    animation: goldShift 4s ease infinite;
+    border: 2px solid #fab005;
+    box-shadow: 0 0 20px rgba(250, 176, 5, 0.5), inset 0 0 10px rgba(255,255,255,0.5);
+    color: #1d1d1f;
+  }
+  .evaluation-panel.excellent .evaluation-title {
+    color: #5c3e00;
+  }
+  .evaluation-panel.excellent .target-companies {
+    color: #3b2c00;
+    text-shadow: 0 0 10px rgba(255,255,255,0.6);
+  }
+  .evaluation-panel.excellent .evaluation-comments {
+    background: rgba(255, 255, 255, 0.85);
+    padding: 16px;
+    border-radius: 8px;
+    color: #1d1d1f;
+    border: 1px solid rgba(250, 176, 5, 0.3);
+  }
+
+  /* 70%以上：ブロンズ・シルバー・ライトブルー */
+  .evaluation-panel.good {
+    background: linear-gradient(135deg, #e7f5ff 0%, #d0ebff 100%);
+    border: 1px solid #74c0fc;
+    box-shadow: 0 0 10px rgba(116, 192, 252, 0.2);
+  }
+  .evaluation-panel.good .target-companies {
+    color: #1c7ed6;
+  }
+
+  /* 50%以上：スタンダード */
+  .evaluation-panel.average {
+    border: 1px solid var(--border);
+  }
+
+  /* 50%未満：低調 */
+  .evaluation-panel.poor {
+    background: #f8f9fa;
+    border: 1px solid var(--border);
+  }
+  .evaluation-panel.poor .target-companies {
+    color: var(--muted);
+  }
+
+  /* 星の演出 */
+  .gacha-stars {
+    font-size: 20px;
+    color: #ffd700;
+    letter-spacing: 4px;
+    margin-bottom: 6px;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+    animation: starPulse 1s ease-in-out infinite alternate;
+  }
+
+  /* アニメーションキーフレーム */
+  @keyframes rainbowShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  @keyframes goldShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  @keyframes superPulse {
+    from { box-shadow: 0 0 15px rgba(253, 196, 25, 0.4), inset 0 0 10px rgba(255,255,255,0.4); }
+    to { box-shadow: 0 0 35px rgba(253, 196, 25, 0.9), inset 0 0 25px rgba(255,255,255,0.8); }
+  }
+  @keyframes starPulse {
+    from { transform: scale(1); opacity: 0.8; }
+    to { transform: scale(1.15); opacity: 1; }
+  }
+
+  /* 紙吹雪用のスタイル */
+  .confetti-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
   }
 </style>
 </head>
@@ -1142,6 +1376,85 @@ function render(html) { app.innerHTML = html; }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
 }
+async function renderEntryChoice() {
+  const user = await window.AuthApp?.getUser?.();
+  render(`
+    <div class="entry-choice">
+      <section class="setup-hero">
+        <span class="setup-eyebrow">WEB TEST</span>
+        <h1 class="diagnosis-title">受験方法を選択してください</h1>
+        <p class="setup-copy">初回はテスト後にメールアドレスとパスワードを登録します。2回目以降はログインすると前回からの推移を確認できます。</p>
+      </section>
+      ${user ? `<div class="notice">ログイン中: ${escapeHtml(user.email)}。2回目以降の方として続けられます。</div>` : ""}
+      <div class="entry-grid">
+        <button type="button" class="entry-card" id="firstTimeBtn">
+          <span>
+            <strong>初回の方</strong>
+            <span>登録なしでテストを開始し、終了後に次回用のログイン情報を作成します。</span>
+          </span>
+          <span class="link-button">初回として始める</span>
+        </button>
+        <button type="button" class="entry-card" id="returningBtn">
+          <span>
+            <strong>2回目以降の方</strong>
+            <span class="entry-benefit"><b>お得</b>前回比較や苦手ポイント、目指せる企業群がわかります。</span>
+          </span>
+          <span class="link-button">ログインして始める</span>
+        </button>
+      </div>
+    </div>
+  `);
+  document.getElementById("firstTimeBtn").addEventListener("click", renderSetup);
+  document.getElementById("returningBtn").addEventListener("click", () => {
+    if (user) renderSetup();
+    else renderReturningLogin();
+  });
+}
+
+function renderReturningLogin() {
+  render(`
+    <div class="auth-shell">
+      <h1>2回目以降の方</h1>
+      <p class="muted">登録済みのメールアドレスとパスワードでログインしてください。</p>
+      <div id="loginMsg"></div>
+      <div class="panel">
+        <form id="inlineLoginForm">
+          <div class="field">
+            <label for="loginEmail">メールアドレス</label>
+            <input type="email" id="loginEmail" required autocomplete="email" autofocus>
+          </div>
+          <div class="field">
+            <label for="loginPassword">パスワード</label>
+            <input type="password" id="loginPassword" required autocomplete="current-password">
+          </div>
+          <div class="row">
+            <button type="submit" id="inlineLoginBtn">ログイン</button>
+            <button type="button" class="secondary" id="entryBackBtn">戻る</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `);
+  const msg = document.getElementById("loginMsg");
+  const btn = document.getElementById("inlineLoginBtn");
+  document.getElementById("entryBackBtn").addEventListener("click", renderEntryChoice);
+  document.getElementById("inlineLoginForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    btn.disabled = true;
+    msg.innerHTML = '<div class="notice">ログイン中...</div>';
+    try {
+      await window.AuthApp.signIn(
+        document.getElementById("loginEmail").value.trim(),
+        document.getElementById("loginPassword").value
+      );
+      renderSetup();
+    } catch (e) {
+      msg.innerHTML = `<div class="error">ログイン失敗: ${escapeHtml(e.message || e)}</div>`;
+      btn.disabled = false;
+    }
+  });
+}
+
 function renderLegalText(text) {
   return `<pre class="legal-pre">${escapeHtml(text)}</pre>`;
 }
@@ -1186,6 +1499,71 @@ function saveHistory(entry) {
   const list = loadHistory();
   list.unshift(entry);
   localStorage.setItem("history", JSON.stringify(list.slice(0, 20)));
+}
+function summarizeSavedAttempt(attempt) {
+  const sections = Array.isArray(attempt?.sections) ? attempt.sections : [];
+  const score = sections.reduce((sum, s) => sum + Number(s.score || 0), 0);
+  const total = sections.reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const elapsedSec = sections.reduce((sum, s) => sum + Number(s.duration_sec || s.elapsedSec || 0), 0);
+  return {
+    id: attempt?.id || "",
+    sessionId: attempt?.session_id || "",
+    savedAt: attempt?.saved_at || "",
+    uiMode: attempt?.ui_mode || "",
+    score,
+    total,
+    pct: total > 0 ? Math.round((score / total) * 100) : 0,
+    elapsedSec
+  };
+}
+function getPreviousAttemptSummary(uiMode, currentSessionId) {
+  const attempts = window.AuthApp?.getAttempts?.() || [];
+  const currentSession = String(currentSessionId || "");
+  const previous = attempts
+    .map(summarizeSavedAttempt)
+    .filter(a => a.uiMode === uiMode && (!currentSession || a.sessionId !== currentSession))
+    .find(a => a.total > 0);
+  return previous || null;
+}
+function formatDelta(value, unit = "", invert = false) {
+  const cls = value === 0 ? "flat" : ((value > 0) !== invert ? "up" : "down");
+  const sign = value > 0 ? "+" : "";
+  return `<span class="trend-delta ${cls}">${sign}${value}${unit}</span>`;
+}
+function renderTrendPanel(previous, current) {
+  if (!previous) {
+    return `
+      <section class="trend-panel">
+        <span class="setup-eyebrow">PROGRESS</span>
+        <h2>前回からの推移</h2>
+        <p class="muted">同じテスト種別の前回結果はまだありません。次回ログインして受験すると、ここに推移が表示されます。</p>
+      </section>
+    `;
+  }
+  const elapsedDelta = current.elapsedSec - previous.elapsedSec;
+  const prevM = Math.floor(previous.elapsedSec / 60);
+  const prevS = previous.elapsedSec % 60;
+  return `
+    <section class="trend-panel">
+      <span class="setup-eyebrow">PROGRESS</span>
+      <h2>前回からの推移</h2>
+      <p class="muted">前回: ${new Date(previous.savedAt).toLocaleString("ja-JP")} ・ ${previous.score} / ${previous.total} ・ ${prevM}分${prevS}秒</p>
+      <div class="trend-grid">
+        <div class="metric-tile">
+          <span class="metric-label">スコア差</span>
+          <span class="metric-value">${formatDelta(current.score - previous.score, "点")}</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">正答率差</span>
+          <span class="metric-value">${formatDelta(current.pct - previous.pct, "%")}</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">所要時間差</span>
+          <span class="metric-value">${formatDelta(elapsedDelta, "秒", true)}</span>
+        </div>
+      </div>
+    </section>
+  `;
 }
 function getChainTotalQuestions() {
   return (state.chain || []).reduce((sum, modeId) => {
@@ -1631,9 +2009,7 @@ function renderSetup() {
         <p class="muted">次の問題へ進むと戻れません。</p>
         <div class="row">
           <a class="link-button" href="login.html">ログイン</a>
-          <a class="link-button" href="signup.html">会員登録</a>
           <a class="link-button" href="admin.html">管理者</a>
-          <button class="secondary" id="historyBtn">履歴 ${history.length}</button>
           <button class="start-btn-big" id="startBtn">診断を開始</button>
         </div>
       </div>
@@ -1644,7 +2020,6 @@ function renderSetup() {
     btn.addEventListener("click", () => setLanguage(btn.dataset.ui));
   });
   document.getElementById("startBtn").addEventListener("click", startTest);
-  document.getElementById("historyBtn").addEventListener("click", renderHistory);
 
   ensureGenerationStarted();
   updatePrefetchStatus();
@@ -1874,6 +2249,94 @@ function renderTest() {
 }
 
 /* ============================================================
+   紙吹雪エフェクト (Confetti)
+============================================================ */
+function startConfettiEffect(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  const resizeCanvas = () => {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+  };
+  resizeCanvas();
+  
+  // 親のサイズ変更に追従
+  window.addEventListener('resize', resizeCanvas);
+  
+  const colors = ['#ffd700', '#ff6b6b', '#4dabf7', '#51cf66', '#f783ac', '#cc5de8', '#ff922b'];
+  const confettiCount = 100;
+  const particles = [];
+
+  for (let i = 0; i < confettiCount; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      r: Math.random() * 4 + 4,
+      d: Math.random() * canvas.height,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      tilt: Math.random() * 10 - 5,
+      tiltAngleIncremental: Math.random() * 0.07 + 0.02,
+      tiltAngle: 0,
+      speed: Math.random() * 2 + 2
+    });
+  }
+
+  let animationFrameId;
+  let startTime = Date.now();
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 6秒でフェードアウトしてアニメーション停止
+    const elapsed = Date.now() - startTime;
+    if (elapsed > 6000) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', resizeCanvas);
+      return;
+    }
+    
+    let active = false;
+    for (let i = 0; i < confettiCount; i++) {
+      const p = particles[i];
+      p.tiltAngle += p.tiltAngleIncremental;
+      p.y += p.speed;
+      p.x += Math.sin(p.tiltAngle) * 0.5;
+      p.tilt = Math.sin(p.tiltAngle - (i / 3)) * 15;
+
+      if (p.y <= canvas.height) {
+        active = true;
+      } else {
+        // ループさせずに、上からもう一度落とす（ただし4秒以降は新しいのは落とさない）
+        if (elapsed < 4000) {
+          p.x = Math.random() * canvas.width;
+          p.y = -20;
+          active = true;
+        }
+      }
+
+      ctx.beginPath();
+      ctx.lineWidth = p.r;
+      ctx.strokeStyle = p.color;
+      ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+      ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+      ctx.stroke();
+    }
+
+    if (active) {
+      animationFrameId = requestAnimationFrame(draw);
+    } else {
+      window.removeEventListener('resize', resizeCanvas);
+    }
+  }
+
+  draw();
+}
+
+/* ============================================================
    画面: 結果
 ============================================================ */
 function renderResults(result) {
@@ -1882,6 +2345,64 @@ function renderResults(result) {
   const totalAll = combined.reduce((s, r) => s + r.total, 0);
   const totalElapsed = combined.reduce((s, r) => s + r.elapsedSec, 0);
   const pct = totalAll > 0 ? Math.round((totalScore / totalAll) * 100) : 0;
+  const previousAttempt = getPreviousAttemptSummary(state.uiMode, result.sessionId || state.lastCompletedSessionId);
+  const trendPanel = renderTrendPanel(previousAttempt, {
+    score: totalScore,
+    total: totalAll,
+    pct,
+    elapsedSec: totalElapsed
+  });
+
+  let comments = [];
+  let matchingCompanies = "";
+  let resultClass = "standard";
+
+  if (pct >= 85) {
+    matchingCompanies = "丸紅・住友商事";
+    comments = [
+      "おめでとうございます！圧倒的な高得点です。実力は間違いなくトップクラスです。",
+      "このレベルであれば、超難関である丸紅や住友商事などの総合商社の筆記選考も突破できる十分な実力があります。",
+      "基礎は完璧に仕上がっていますので、自信を持って面接や他の選考プロセスの対策に進んでください！",
+      "この高いパフォーマンスを維持し、本番のWebテストでも遺憾なく実力を発揮しましょう。"
+    ];
+    resultClass = "super-excellent";
+  } else if (pct >= 80) {
+    matchingCompanies = "伊藤忠商事・豊通・双日・兼松・商船三井・川崎汽船";
+    comments = [
+      "素晴らしい成績です！非常に高い正答率を記録しています。",
+      "伊藤忠商事や豊田通商、双日、兼松などの大手商社、さらには商船三井や川崎汽船といった難関企業のボーダーラインを大きく上回る実力があります。",
+      "現在の学習アプローチは非常に有効です。ケアレスミスをゼロに近づける意識を維持しましょう。",
+      "この調子で自信を持って本番の選考に挑んでください！"
+    ];
+    resultClass = "excellent";
+  } else if (pct >= 70) {
+    matchingCompanies = "三菱商事・三井物産・長瀬産業";
+    comments = [
+      "合格圏内です！安定したパフォーマンスを発揮できています。",
+      "三菱商事や三井物産、長瀬産業などの難関トップ企業に手が届くレベルに達しています。",
+      "時間配分をさらに意識し、苦手な問題パターンを潰すことで、さらに安定感が増します。",
+      "油断せず対策を続け、万全の状態で本番に臨みましょう。"
+    ];
+    resultClass = "good";
+  } else if (pct >= 50) {
+    matchingCompanies = "アクセンチュア";
+    comments = [
+      "お疲れ様でした。基礎的な問題への対応力はしっかりと身についています。",
+      "アクセンチュアなど大手の選考ラインの突破を十分に目指せるスコアです。",
+      "解答のスピードを意識し、時間切れになる問題を減らすことがさらなるスコアアップの鍵です。",
+      "もう一歩です！間違えた箇所を復習して、さらなる高みを目指しましょう。"
+    ];
+    resultClass = "average";
+  } else {
+    matchingCompanies = "基礎から見直してみましょう";
+    comments = [
+      "お疲れ様でした。まずは基礎をしっかりと固めることから始めましょう。",
+      "玉手箱などのWebテストでは、問題のパターンに慣れることで得点が大きく伸びます。",
+      "解説をよく読み、間違えた問題を繰り返し解き直すことが最も効果的です。",
+      "焦らず一歩ずつステップアップして、スコアアップを目指しましょう！"
+    ];
+    resultClass = "poor";
+  }
   const answeredAll = combined.reduce((sum, r) => sum + (r.detail || []).filter(d => d.userIdx !== null && d.userIdx !== undefined).length, 0);
   const completionPct = totalAll > 0 ? Math.round((answeredAll / totalAll) * 100) : 0;
   const m = Math.floor(totalElapsed / 60);
@@ -1930,6 +2451,18 @@ function renderResults(result) {
         </div>
       </section>
 
+      <div class="evaluation-panel ${resultClass}">
+        ${(pct >= 80) ? `<canvas id="confettiCanvas" class="confetti-canvas"></canvas>` : ""}
+        ${(pct >= 80) ? '<div class="gacha-stars">★★★★★</div>' : ''}
+        ${(pct >= 70 && pct < 80) ? '<div class="gacha-stars" style="color: #a0aec0; text-shadow: 0 0 5px rgba(160, 174, 192, 0.5)">★★★★</div>' : ''}
+        ${(pct >= 50 && pct < 70) ? '<div class="gacha-stars" style="color: #b87333; text-shadow: 0 0 5px rgba(184, 115, 51, 0.5)">★★★</div>' : ''}
+        <div class="evaluation-title">判定結果・合格目安</div>
+        <div class="target-companies">合格目安企業: <strong>${escapeHtml(matchingCompanies)}</strong></div>
+        <div class="evaluation-comments">
+          ${comments.map(c => `<p>${escapeHtml(c)}</p>`).join("")}
+        </div>
+      </div>
+
       <div class="result-metrics">
         <div class="metric-tile">
           <span class="metric-label">正答率</span>
@@ -1945,6 +2478,7 @@ function renderResults(result) {
         </div>
       </div>
 
+      ${trendPanel}
       ${sectionSummaries}
       ${sections.map((sec, si) => `
       <section class="explain-section">
@@ -2005,7 +2539,11 @@ function renderResults(result) {
     });
   });
   document.getElementById("restartBtn").addEventListener("click", resetAndSetup);
-  document.getElementById("homeBtn").addEventListener("click", resetAndSetup);
+  document.getElementById("homeBtn").addEventListener("click", resetAndEntryChoice);
+
+  if (pct >= 80) {
+    startConfettiEffect("confettiCanvas");
+  }
 }
 
 /* ============================================================
@@ -2200,64 +2738,44 @@ function finishCurrentSection() {
     score: totalScore,
     accuracy_percent: totalAll > 0 ? Math.round((totalScore / totalAll) * 100) : 0
   });
-  saveTestResultsOffline(combined, state.uiMode, completedSessionId);
-  // プロフィール登録ゲート: 結果・解説表示前に同意付きプロフィール登録を必須化
+  state.lastCompletedSessionId = completedSessionId;
   state._pendingResults = { combined, sessionId: completedSessionId };
-  renderProfileGate();
+  window.AuthApp?.getUser?.().then(user => {
+    if (user) {
+      saveTestResultsOffline(combined, state.uiMode, completedSessionId).then(() => {
+        state._pendingResults = null;
+        renderResults({ combined, sessionId: completedSessionId });
+      });
+    } else {
+      renderProfileGate();
+    }
+  });
 }
 
 function renderProfileGate() {
-  window.AuthApp?.trackEvent?.("profile_gate_view", {
+  window.AuthApp?.trackEvent?.("account_gate_view", {
     session_id: state._pendingResults?.sessionId || null,
     ui_mode: state.uiMode
   });
   render(`
-    <h1>プロフィール登録</h1>
-    <p class="muted">お疲れ様でした！解説を見る前にプロフィールを登録して、限定の企業スカウトを受け取りましょう。</p>
+    <div class="auth-shell">
+    <h1>次回ログイン情報の登録</h1>
+    <p class="muted">テスト結果を保存します。次回からはこのメールアドレスとパスワードでログインして、前回からの推移を確認できます。</p>
+    <div class="account-note">情報はこのブラウザ内だけに保存され、外部送信されません。</div>
     <div id="profileError"></div>
     <div class="panel">
       <form id="profileGateForm" novalidate>
-        <div class="profile-grid">
-          <div class="field">
-            <label for="profileFullName">氏名（漢字）</label>
-            <input id="profileFullName" type="text" autocomplete="name" data-profile-required>
-          </div>
-          <div class="field">
-            <label for="profileKana">フリガナ</label>
-            <input id="profileKana" type="text" autocomplete="name" data-profile-required>
-          </div>
-          <div class="field">
-            <label for="profileUniversity">大学名</label>
-            <input id="profileUniversity" type="search" list="profileUniversityList" autocomplete="organization" placeholder="大学名を入力・検索" data-profile-required>
-            <datalist id="profileUniversityList"></datalist>
-            <div class="hint">候補から大学名を選択してください。</div>
-          </div>
-          <div class="field">
-            <label for="profileDepartment">学部</label>
-            <select id="profileDepartment" data-profile-required disabled>
-              <option value="">大学を選択してください</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="profileGradYear">卒業年度</label>
-            <select id="profileGradYear" data-profile-required>
-              <option value="">選択してください</option>
-              <option value="2027">2027年卒</option>
-              <option value="2028">2028年卒</option>
-              <option value="2029">2029年卒</option>
-              <option value="2030">2030年卒</option>
-              <option value="2031">2031年卒</option>
-              <option value="2032">2032年卒</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="profileEmail">メールアドレス</label>
-            <input id="profileEmail" type="email" autocomplete="email" inputmode="email" data-profile-required>
-          </div>
-          <div class="field full">
-            <label for="profilePhone">電話番号</label>
-            <input id="profilePhone" type="tel" autocomplete="tel" inputmode="tel" data-profile-required>
-          </div>
+        <div class="field">
+          <label for="profileEmail">メールアドレス</label>
+          <input id="profileEmail" type="email" autocomplete="email" inputmode="email" data-profile-required autofocus>
+        </div>
+        <div class="field">
+          <label for="profilePassword">パスワード（8文字以上）</label>
+          <input id="profilePassword" type="password" autocomplete="new-password" minlength="8" data-profile-required>
+        </div>
+        <div class="field">
+          <label for="profilePasswordConfirm">パスワード確認</label>
+          <input id="profilePasswordConfirm" type="password" autocomplete="new-password" minlength="8" data-profile-required>
         </div>
 
         <div class="field" style="margin-top:18px">
@@ -2273,9 +2791,10 @@ function renderProfileGate() {
         </div>
 
         <div class="row" style="margin-top:8px">
-          <button id="profileSubmit" type="submit" class="start-btn-big" style="font-size:15px;padding:12px 28px" disabled>解説を見る</button>
+          <button id="profileSubmit" type="submit" class="start-btn-big" style="font-size:15px;padding:12px 28px" disabled>登録して結果を見る</button>
         </div>
       </form>
+    </div>
     </div>
   `);
 
@@ -2284,26 +2803,14 @@ function renderProfileGate() {
   const consent = document.getElementById("profileConsent");
   const submitBtn = document.getElementById("profileSubmit");
   const errEl = document.getElementById("profileError");
-  const universityEl = document.getElementById("profileUniversity");
-  const universityListEl = document.getElementById("profileUniversityList");
-  const departmentEl = document.getElementById("profileDepartment");
-  let schoolMaster = [];
-
-  const populateDepartments = (universityName, selectedDepartment = "") => {
-    const school = getSchoolByName(schoolMaster, universityName.trim());
-    const faculties = school?.faculties || [];
-    departmentEl.disabled = !school;
-    departmentEl.innerHTML = school
-      ? renderDepartmentSelectOptions(faculties, selectedDepartment)
-      : '<option value="">大学名を候補から選択してください</option>';
-  };
 
   const isFormReady = () =>
     requiredFields.every(el =>
       el.value.trim() &&
       (el.type !== "email" || el.checkValidity()) &&
-      (el.id !== "profileUniversity" || !!getSchoolByName(schoolMaster, el.value.trim()))
+      (el.type !== "password" || el.value.length >= 8)
     ) &&
+    document.getElementById("profilePassword").value === document.getElementById("profilePasswordConfirm").value &&
     consent.checked;
 
   const syncSubmit = () => {
@@ -2315,36 +2822,8 @@ function renderProfileGate() {
     el.addEventListener("input", syncSubmit);
     el.addEventListener("change", syncSubmit);
   });
-  universityEl.addEventListener("input", () => {
-    populateDepartments(universityEl.value);
-    syncSubmit();
-  });
-  universityEl.addEventListener("change", () => {
-    populateDepartments(universityEl.value);
-    syncSubmit();
-  });
   consent.addEventListener("change", syncSubmit);
   syncSubmit();
-
-  Promise.all([
-    window.AuthApp?.getSchoolMaster?.() || Promise.resolve([]),
-    window.AuthApp?.getUser?.() || Promise.resolve(null)
-  ]).then(([master, user]) => {
-    schoolMaster = Array.isArray(master) ? master : [];
-    const selectedUniversity = user?.university || "";
-    universityListEl.innerHTML = renderUniversitySearchOptions(schoolMaster);
-    universityEl.value = getSchoolByName(schoolMaster, selectedUniversity) ? selectedUniversity : "";
-    populateDepartments(universityEl.value, user?.department || "");
-    if (user?.email && !document.getElementById("profileEmail").value) document.getElementById("profileEmail").value = user.email;
-    if (user?.graduation_year && !document.getElementById("profileGradYear").value) document.getElementById("profileGradYear").value = user.graduation_year;
-    syncSubmit();
-  }).catch(() => {
-    universityListEl.innerHTML = "";
-    universityEl.placeholder = "大学マスターを読み込めませんでした";
-    departmentEl.innerHTML = '<option value="">大学を選択してください</option>';
-    departmentEl.disabled = true;
-    syncSubmit();
-  });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -2356,28 +2835,30 @@ function renderProfileGate() {
       return;
     }
 
-    const profile = {
-      full_name: document.getElementById("profileFullName").value.trim(),
-      furigana: document.getElementById("profileKana").value.trim(),
-      university: document.getElementById("profileUniversity").value.trim(),
-      department: document.getElementById("profileDepartment").value.trim(),
-      graduation_year: document.getElementById("profileGradYear").value,
-      email: document.getElementById("profileEmail").value.trim().toLowerCase(),
-      phone: document.getElementById("profilePhone").value.trim()
-    };
-
-    const payload = buildProfilePayload(profile, pending.combined, state.uiMode, pending.sessionId);
     submitBtn.disabled = true;
     submitBtn.textContent = "保存中...";
 
     try {
-      if (!window.AuthApp?.saveProfileAndResults) throw new Error("保存機能を読み込めませんでした");
-      await window.AuthApp.saveProfileAndResults(payload);
-      const result = { combined: pending.combined };
+      const email = document.getElementById("profileEmail").value.trim().toLowerCase();
+      const password = document.getElementById("profilePassword").value;
+      if (password !== document.getElementById("profilePasswordConfirm").value) {
+        throw new Error("確認用パスワードが一致しません");
+      }
+      await window.AuthApp.register({
+        email,
+        password,
+        nickname: email.split("@")[0],
+        university: "",
+        graduation_year: "",
+        first_choice_industry: null,
+        consent_terms: true
+      });
+      await saveTestResultsOffline(pending.combined, state.uiMode, pending.sessionId);
+      const result = { combined: pending.combined, sessionId: pending.sessionId };
       state._pendingResults = null;
       renderResults(result);
     } catch (err) {
-      submitBtn.textContent = "解説を見る";
+      submitBtn.textContent = "登録して結果を見る";
       submitBtn.disabled = false;
       errEl.innerHTML = `<div class="error">${escapeHtml(err.message || String(err))}</div>`;
       window.scrollTo(0, 0);
@@ -2476,6 +2957,31 @@ function resetAndSetup() {
   renderSetup();
 }
 
+function resetAndEntryChoice() {
+  resetStateForNextRun();
+  renderEntryChoice();
+}
+
+function resetStateForNextRun() {
+  stopTimer();
+  state.chain = CHAINS[state.uiMode].slice();
+  state.chainIdx = 0;
+  state.chainResults = [];
+  state.language = state.chain[0];
+  state.passages = [];
+  state.passagePromises = null;
+  state.passageErrors = {};
+  state.passageProgress = [];
+  state.generationStarted = false;
+  state.testStarted = false;
+  state.answers = {};
+  state.currentIdx = 0;
+  state.analyticsStarted = false;
+  state.questionViewTracked = {};
+  state.timeRemaining = getDurationSec();
+  state.lastError = null;
+}
+
 window.addEventListener("pagehide", () => {
   if (!state.sessionId || !state.analyticsStarted) return;
   window.AuthApp?.abandonTestAnalytics?.({
@@ -2502,7 +3008,7 @@ document.addEventListener("visibilitychange", () => {
 /* 起動: 認証は任意。API や外部サービスには接続しない。 */
 (async function bootstrap() {
   await window.AuthApp?.ready;
-  renderSetup();
+  renderEntryChoice();
 })();
 </script>
 </body>
